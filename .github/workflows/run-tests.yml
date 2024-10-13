@@ -26,3 +26,10 @@ jobs:
 
             - name: Run tests
               run: ./run test
+
+    lint-typescript:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Lint TypeScript
+              run: npx eslint '**/*.ts'
