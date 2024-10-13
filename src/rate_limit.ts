@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 // Load your GitHub token from an environment variable
 const githubToken = process.env.GITHUB_TOKEN;
@@ -81,8 +81,9 @@ const retryRequest = async (url: string, retries: number = 3, delay: number = 10
     const response = await axios.get(url, { headers });
     return response.data;
   } catch (error) {
-    if (retries > 0 && error.response && error.response.status === 403) {
-      const retryAfter = error.response.headers['retry-after'] || delay;
+    const e = error as AxiosError;
+    if (retries > 0 && e.response && e.response.status === 403) {
+      const retryAfter = e.response.headers['retry-after'] || delay;
       console.log(`Rate limit hit. Retrying after ${retryAfter}ms...`);
 
       return new Promise((resolve) => {
