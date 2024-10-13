@@ -9,16 +9,14 @@ on:
             - main
 
 jobs:
-    run-tests:
+    build-and-test:
         runs-on: ubuntu-latest
 
         steps:
             # Step 1: Checkout the code
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Fetch specific branch
-              run: git fetch origin main:main
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.head_ref }}
 
             - name: Install Dependencies
               run: ./run install
