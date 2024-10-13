@@ -1,6 +1,7 @@
 {
   "name": "ece461_team_phase_2",
   "version": "1.0.0",
+  "type": "module", 
   "description": "test",
   "main": "index.js",
   "scripts": {
