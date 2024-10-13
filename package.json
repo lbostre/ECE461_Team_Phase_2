@@ -1,0 +1,25 @@
+{
+  "name": "ece461_team_phase_2",
+  "version": "1.0.0",
+  "description": "test",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "fs": "^0.0.1-security",
+    "simple-git": "^3.27.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "eslint": "^9.12.0"
+  }
+}

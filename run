@@ -22,15 +22,7 @@ check_url_file_path() {
 # Main script
 case "$1" in
     install)
-        echo "Installing dependencies..."
-        npm init -y
-        npm install typescript --save-dev
-        npm install @types/node --save-dev
-        npm install fs --save-dev
-        npm install axios --save-dev
-        npm install dotenv --save-dev
-        npm install simple-git --save-dev
-        echo "Dependencies installed."
+        npm install 
         exit 0
         ;;
 
