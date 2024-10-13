@@ -31,5 +31,11 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
+            - name: Give execute permissions to ./run
+              run: chmod +x ./run
+
+            - name: Install Dependencies
+              run: ./run install
+
             - name: Lint TypeScript
               run: npx eslint '**/*.ts'
