@@ -15,15 +15,13 @@ jobs:
         steps:
             # Step 1: Checkout the code
             - name: Checkout repository
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
-            # Step 2: Set up the required environment (if needed)
-            # You can add steps here to install dependencies, languages, or tools
+            - name: Fetch specific branch
+              run: git fetch origin main:main
 
-            # Step 3: Run your tests
             - name: Install Dependencies
               run: ./run install
 
-            # Step 3: Run your tests
             - name: Run tests
               run: ./run test
