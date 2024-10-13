@@ -1,0 +1,149 @@
+#!/bin/bash
+
+# Log file
+LOG_FILE="run.log"
+
+# Remove the log file if it exists
+if [ -f "$LOG_FILE" ]; then
+    rm "$LOG_FILE"
+fi
+
+# Redirect both stdout and stderr to the log file using tee
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Check if the URL file path exists
+check_url_file_path() {
+    if [ ! -f "$1" ]; then
+        echo "Please input install, test, or a correct file path"
+        exit 1
+    fi
+}
+
+# Main script
+case "$1" in
+    install)
+        echo "Installing dependencies..."
+        npm init -y
+        npm install typescript --save-dev
+        npm install @types/node --save-dev
+        npm install fs --save-dev
+        npm install axios --save-dev
+        npm install dotenv --save-dev
+        npm install simple-git --save-dev
+        echo "Dependencies installed."
+        exit 0
+        ;;
+
+    test)
+        echo "Running tests..."
+        URL_FILE="test_cases.txt"
+  
+        if [ ! -f "$URL_FILE" ]; then
+            echo "Error: File '$URL_FILE' does not exist."
+            exit 1
+        fi
+
+        # Directory to store outputs
+        OUTPUT_DIR="test_outputs"
+        mkdir -p "$OUTPUT_DIR"
+
+        # Initialize counters
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+
+        # Iterate through URLs in the file and run tests
+        INDEX=1
+        while IFS= read -r URL; do
+            # Trim any trailing newline or carriage return characters
+            URL=$(echo "$URL" | tr -d '\r')
+
+            echo "Processing test case #$INDEX with URL: $URL"
+
+            # Run the metrics.js code on the URL and capture the output
+            node -e "require('./metrics.js').getRepoData('$URL').then(data => { 
+                const fs = require('fs');
+                fs.writeFileSync('$OUTPUT_DIR/output_$INDEX.json', JSON.stringify(data, null, 2));
+            }).catch(err => { 
+                console.error('Error:', err); // Log the error using console.error
+                const fs = require('fs');
+                fs.writeFileSync('$OUTPUT_DIR/output_$INDEX.json', JSON.stringify({error: 'Access denied or other error'}, null, 2));
+            });"
+
+            # Wait for the file to be written before proceeding to the next test case
+            sleep 1
+
+            # Check if the output file contains the expected results (e.g., a score field)
+            if grep -q '"score":' "$OUTPUT_DIR/output_$INDEX.json"; then
+                SCORE=$(grep '"score":' "$OUTPUT_DIR/output_$INDEX.json" | awk '{print $2}' | tr -d ',')
+                
+                # Check if SCORE is a valid number
+                if ! [[ "$SCORE" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                    echo "Test case #$INDEX failed (invalid score value)." | tee -a "$LOG_FILE"
+                else
+                    # Check if the score is negative
+                    if [[ "$SCORE" == -* ]]; then
+                        echo "Test case #$INDEX failed (negative score)." | tee -a "$LOG_FILE"
+                    else
+                        echo "Test case #$INDEX passed." | tee -a "$LOG_FILE"
+                        PASSED_TESTS=$((PASSED_TESTS + 1))
+                    fi
+                fi
+            else
+                echo "Test case #$INDEX failed (invalid metrics)." | tee -a "$LOG_FILE"
+            fi
+
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            INDEX=$((INDEX + 1))
+
+        done < "$URL_FILE"
+
+        # Calculate coverage
+        if [ $TOTAL_TESTS -gt 0 ]; then
+            COVERAGE=$((100 * PASSED_TESTS / TOTAL_TESTS))
+        else
+            COVERAGE=0
+        fi
+
+        # Summary output
+        echo "Total: $TOTAL_TESTS" | tee -a "$LOG_FILE"
+        echo "Passed: $PASSED_TESTS" | tee -a "$LOG_FILE"
+        echo "Coverage: ${COVERAGE}%" | tee -a "$LOG_FILE"
+        echo "$PASSED_TESTS/$TOTAL_TESTS test cases passed. ${COVERAGE}% line coverage achieved." | tee -a "$LOG_FILE"
+
+        exit 0
+        ;;
+
+    *)
+        if [ -z "$1" ]; then
+            echo "Usage: $0 {install|test|url_file_path}" | tee -a "$LOG_FILE"
+            exit 1
+        fi
+
+        check_url_file_path "$1"
+        
+        # Compile the TypeScript file
+        npx tsc cli.ts
+        if [ $? -ne 0 ]; then
+            echo "TypeScript compilation failed." | tee -a "$LOG_FILE"
+            exit 1
+        fi
+
+        rm -rf cloned_repo
+        rm -f output.json
+        # Run the compiled JS file with the given URL file path
+        node cli.js "$1"
+        if [ $? -ne 0 ]; then
+            echo "Failed to execute cli.js." | tee -a "$LOG_FILE"
+            exit 1
+        fi
+
+        if [ -f output.json ]; then
+            cat output.json | tee -a "$LOG_FILE"
+        else
+            echo "output.json not found." | tee -a "$LOG_FILE"
+            exit 1
+        fi
+
+        exit 0
+        ;;
+esac
