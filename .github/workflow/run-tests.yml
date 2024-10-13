@@ -1,0 +1,25 @@
+name: Run Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    run-tests:
+        runs-on: ubuntu-latest
+
+        steps:
+            # Step 1: Checkout the code
+            - name: Checkout repository
+              uses: actions/checkout@v3
+
+            # Step 2: Set up the required environment (if needed)
+            # You can add steps here to install dependencies, languages, or tools
+
+            # Step 3: Run your tests
+            - name: Run tests
+              run: ./run test
