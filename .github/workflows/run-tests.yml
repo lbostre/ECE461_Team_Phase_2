@@ -21,5 +21,9 @@ jobs:
             # You can add steps here to install dependencies, languages, or tools
 
             # Step 3: Run your tests
+            - name: Install Dependencies
+              run: ./run install
+
+            # Step 3: Run your tests
             - name: Run tests
               run: ./run test
