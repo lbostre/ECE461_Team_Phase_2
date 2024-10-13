@@ -18,6 +18,9 @@ jobs:
               with:
                   ref: ${{ github.head_ref }}
 
+            - name: Give execute permissions to ./run
+              run: chmod +x ./run
+
             - name: Install Dependencies
               run: ./run install
 
