@@ -1,7 +1,7 @@
 {
   "name": "ece461_team_phase_2",
   "version": "1.0.0",
-  "type": "module", 
+  "type": "module",
   "description": "test",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.7.5",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "fs": "^0.0.1-security",
@@ -21,6 +23,8 @@
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
-    "eslint": "^9.12.0"
+    "aws-lambda": "^1.0.7",
+    "eslint": "^9.12.0",
+    "uuid": "^10.0.0"
   }
 }
