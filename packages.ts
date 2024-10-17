@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { PackageData, PackageMetadata } from "./types";
+import { PackageData, PackageMetadata } from "./types.js";
 
 export const generateUniqueId = (): string => {
     // Use a UUID library or custom logic to generate a unique ID

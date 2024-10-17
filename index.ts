@@ -1,5 +1,5 @@
-import { createPackageService } from "./packages";
-import { PackageData, PackageMetadata } from "./types";
+import { createPackageService } from "./packages.js";
+import { PackageData, PackageMetadata } from "./types.js";
 import AWS from "aws-sdk";
 import { minify } from "terser";
 
