@@ -48,7 +48,7 @@ interface APIGatewayResponse {
     body: string;
 }
 
-exports.handler = async (
+export const handler = async (
     event: APIGatewayEvent
 ): Promise<APIGatewayResponse> => {
     const { httpMethod, path, body } = event;
