@@ -1,5 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { PackageData, PackageMetadata } from "./types.js";
+import { minify } from "terser";
+import { BUCKET_NAME, s3 } from "../../index.js";
+import { PackageData, PackageMetadata } from "../../types.js";
 
 export const generateUniqueId = (): string => {
     // Use a UUID library or custom logic to generate a unique ID
@@ -64,11 +66,42 @@ export const createPackage = async (
     }
 };
 
-function uuidv4(): string {
+export function uuidv4(): string {
     // Generate a random UUID v4
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0,
             v = c === "x" ? r : (r & 0x3) | 0x8;
         return v.toString(16);
     });
+}
+
+// Function to upload content to S3
+export const uploadToS3 = async (
+    content: string,
+    fileName: string
+): Promise<string> => {
+    const params = {
+        Bucket: BUCKET_NAME,
+        Key: `packages/${fileName}`, // file path in S3
+        Body: content,
+        ContentType: "application/octet-stream", // Adjust content type based on your needs
+    };
+
+    console.log(`Uploading file to S3: ${fileName}`);
+    const data = await s3.upload(params).promise();
+    console.log(`File uploaded successfully. S3 URL: ${data.Location}`);
+    return data.Location;
+};
+
+// Perform the debloat using Terser
+export async function performDebloat(content: string): Promise<string> {
+    try {
+        console.log("Starting debloat process...");
+        const result = await minify(content);
+        console.log("Debloat completed.");
+        return result.code || content;
+    } catch (error) {
+        console.error("Error during debloat:", error);
+        return content; // Return the original content in case of an error
+    }
 }
