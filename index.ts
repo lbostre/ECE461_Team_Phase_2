@@ -18,8 +18,10 @@ export const handler = async (
     }
 
     // Handle GET request to /package/{id}
-    if (httpMethod === "GET" && path) {
-        const getPathMatch = path.match(/^\/package\/([^\/]+)$/);
+    if (path === "/package/{id}" && httpMethod === "GET") {
+        const getPathMatch = event.pathParameters?.id?.match(
+            /^\/package\/([^\/]+)$/
+        );
         if (getPathMatch) {
             const id = getPathMatch[1]; // Extract package ID from the path
             return handlePackageGet(id);
