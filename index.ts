@@ -11,7 +11,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
     console.log("Received event:", JSON.stringify(event, null, 2));
 
-    const { httpMethod, path, body } = event;
+    const { httpMethod, path, body, pathParameters } = event;
 
     if (path === "/package" && httpMethod === "POST") {
         return handlePackagePost(body);
@@ -19,9 +19,7 @@ export const handler = async (
 
     // Handle GET request to /package/{id}
     if (path === "/package/{id}" && httpMethod === "GET") {
-        const getPathMatch = event.pathParameters?.id?.match(
-            /^\/package\/([^\/]+)$/
-        );
+        const getPathMatch = pathParameters?.id;
         if (getPathMatch) {
             const id = getPathMatch[1]; // Extract package ID from the path
             return handlePackageGet(id);
