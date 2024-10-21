@@ -10,6 +10,10 @@ export interface PackageData {
     debloat?: boolean; // Optional flag for debloating
 }
 
+export interface NewPackageRequestBody {
+    body: PackageRequestBody;
+}
+
 // This interface represents the body of the request for creating or updating a package
 export interface PackageRequestBody {
     metadata: PackageMetadata; // The metadata of the package (e.g., Name, Version, ID)

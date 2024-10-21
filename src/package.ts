@@ -1,5 +1,10 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import { Package, PackageID, PackageRequestBody } from "../types.js";
+import {
+    NewPackageRequestBody,
+    Package,
+    PackageID,
+    PackageRequestBody,
+} from "../types.js";
 import {
     performDebloat,
     uploadToS3,
@@ -22,10 +27,10 @@ export async function handlePackagePost(
 
     try {
         console.log("Body:", body);
-        const parsedBody: PackageRequestBody =
+        const parsedBody: NewPackageRequestBody =
             typeof body === "string" ? JSON.parse(body) : body;
         console.log("Parsed Body:", parsedBody);
-        const { metadata, data } = parsedBody;
+        const { metadata, data } = parsedBody.body;
 
         // Log incoming data
         console.log("Package metadata:", metadata);
