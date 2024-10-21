@@ -18,11 +18,15 @@ export const handler = async (
     }
 
     // Handle GET request to /package/{id}
-    if (path === "/package/{id}" && httpMethod === "GET") {
-        const getPathMatch = pathParameters?.id;
-        if (getPathMatch) {
-            const id = getPathMatch[1]; // Extract package ID from the path
+    if (path.startsWith("/package/") && httpMethod === "GET") {
+        const id = pathParameters?.id;  
+        if (id) {
             return handlePackageGet(id);
+        } else {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: "Missing package ID" }),
+            };
         }
     }
 
