@@ -13,21 +13,16 @@ export const handler = async (
 
     const { httpMethod, path, pathParameters, body } = event;
 
+    console.log(event);
+
     if (path === "/package" && httpMethod === "POST") {
         return handlePackagePost(body);
     }
 
     // Handle GET request to /package/{id}
-    if (path.startsWith("/package/") && httpMethod === "GET") {
-        const id = pathParameters?.id;  
-        if (id) {
-            return handlePackageGet(id);
-        } else {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ error: "Missing package ID" }),
-            };
-        }
+    if (httpMethod === "GET" && pathParameters && pathParameters.id) {
+        const id = pathParameters.id;  // Access id directly from pathParameters
+        return handlePackageGet(id);
     }
 
     return {
