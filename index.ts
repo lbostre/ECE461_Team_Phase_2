@@ -13,15 +13,14 @@ export const handler = async (
 
     const { httpMethod, path, pathParameters, body } = event;
 
-    console.log(event);
-
     if (path === "/package" && httpMethod === "POST") {
+        console.log("Body:", body);
         return handlePackagePost(body);
     }
 
     // Handle GET request to /package/{id}
     if (httpMethod === "GET" && pathParameters && pathParameters.id) {
-        const id = pathParameters.id;  // Access id directly from pathParameters
+        const id = pathParameters.id; // Access id directly from pathParameters
         return handlePackageGet(id);
     }
 
