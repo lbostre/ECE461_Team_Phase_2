@@ -14,7 +14,6 @@ export const handler = async (
     const { httpMethod, path, pathParameters, body } = event;
 
     if (path === "/package" && httpMethod === "POST") {
-        console.log("Body:", body);
         return handlePackagePost(body);
     }
 
