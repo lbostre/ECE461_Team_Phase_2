@@ -29,8 +29,8 @@ export async function handlePackagePost(
         console.log("Body:", body);
         const parsedBody: NewPackageRequestBody =
             typeof body === "string" ? JSON.parse(body) : body;
-        console.log("Parsed Body:", parsedBody);
-        const { metadata, data } = parsedBody.body;
+        console.log("Parsed Body:", JSON.parse(parsedBody.body));
+        const { metadata, data } = JSON.parse(parsedBody.body);
 
         // Log incoming data
         console.log("Package metadata:", metadata);

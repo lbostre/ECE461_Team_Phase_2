@@ -11,7 +11,7 @@ export interface PackageData {
 }
 
 export interface NewPackageRequestBody {
-    body: PackageRequestBody;
+    body: string;
 }
 
 // This interface represents the body of the request for creating or updating a package
