@@ -9,6 +9,7 @@ import {
     performDebloat,
     uploadToS3,
     createPackageService,
+    uploadGithubRepoAsZipToS3,
 } from "./utils/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 
@@ -65,17 +66,22 @@ export async function handlePackagePost(
         }
 
         let s3Url: string | undefined;
+        let zipBase64: string | undefined;
 
         // Upload content to S3 if 'Content' is provided
-        if (contentToUpload) {
+        if (contentToUpload || data.URL) {
             const fileName = `${metadata.ID}-${metadata.Name}.zip`; // Adjust the extension if needed
-            s3Url = await uploadToS3(contentToUpload, fileName);
+            if (data.Content)
+                s3Url = await uploadToS3(contentToUpload, fileName);
+            else if (data.URL) {
+                zipBase64 = await uploadGithubRepoAsZipToS3(data.URL, fileName);
+            }
         }
 
         // Call service function to create package with either URL or S3 URL
-        const result = await createPackageService({
+        const result = await createPackageService(metadata, {
             ...data,
-            URL: data.URL || s3Url, // Use the provided URL or the S3 URL if content was uploaded
+            ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
         });
 
         console.log("Package creation result:", result);
