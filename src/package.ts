@@ -79,9 +79,9 @@ export async function handlePackagePost(
         }
 
         // Call service function to create package with either URL or S3 URL
-        const result = await createPackageService({
+        const result = await createPackageService(metadata, {
             ...data,
-            URL: data.URL || s3Url, // Use the provided URL or the S3 URL if content was uploaded
+            ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
         });
 
         console.log("Package creation result:", result);
