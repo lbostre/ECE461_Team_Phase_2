@@ -128,21 +128,31 @@ export async function uploadGithubRepoAsZipToS3(
     s3Key: string
 ): Promise<string> {
     try {
+        console.log(`Starting uploadGithubRepoAsZipToS3 function.`);
+        console.log(`Input GitHub repo URL: ${githubRepoUrl}`);
+
         // Parse the repo details from the URL
         const [owner, repo] = githubRepoUrl.split("/").slice(-2);
-        console.log("owner, repo", owner, repo);
+        console.log(`Parsed GitHub owner: ${owner}, repo: ${repo}`);
+
         // Construct the GitHub archive URL for the zip file
         const githubZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
+        console.log(`Constructed GitHub zip URL: ${githubZipUrl}`);
 
         // Download the zip file from GitHub
+        console.log(`Starting download from GitHub...`);
         const response = await axios({
             url: githubZipUrl,
             method: "GET",
             responseType: "arraybuffer", // Important for handling binary data
         });
+        console.log(
+            `Download complete. Received ${response.data.byteLength} bytes.`
+        );
 
         // Buffer for the downloaded zip file
         const zipBuffer: Buffer = Buffer.from(response.data);
+        console.log(`Converted response data to Buffer.`);
 
         // Upload the zip file to S3
         const uploadParams: AWS.S3.PutObjectRequest = {
@@ -152,14 +162,18 @@ export async function uploadGithubRepoAsZipToS3(
             ContentType: "application/zip", // Set correct MIME type
         };
 
+        console.log(`Starting upload to S3 with params:`, uploadParams);
         const data: AWS.S3.ManagedUpload.SendData = await s3
             .upload(uploadParams)
             .promise();
-        console.log(`File uploaded successfully at ${data.Location}`);
+        console.log(`File uploaded successfully to S3 at ${data.Location}`);
 
         return data.Location; // Return the uploaded file URL
     } catch (error) {
-        console.error("Error uploading to S3:", error);
+        console.error(
+            "Error during uploadGithubRepoAsZipToS3 execution:",
+            error
+        );
         throw error;
     }
 }
