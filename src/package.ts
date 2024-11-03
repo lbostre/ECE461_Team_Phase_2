@@ -68,11 +68,11 @@ export async function handlePackagePost(
         let s3Url: string | undefined;
 
         // Upload content to S3 if 'Content' is provided
-        if (contentToUpload) {
+        if (contentToUpload || data.URL) {
             const fileName = `${metadata.ID}-${metadata.Name}.zip`; // Adjust the extension if needed
             if (data.Content)
                 s3Url = await uploadToS3(contentToUpload, fileName);
-            if (data.URL)
+            else if (data.URL)
                 await uploadGithubRepoAsZipToS3(
                     data.URL,
                     BUCKET_NAME,
