@@ -2,3 +2,4 @@
 /node_modules
 run.log
 /dist
+.env
