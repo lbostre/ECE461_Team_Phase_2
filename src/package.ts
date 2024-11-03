@@ -9,7 +9,7 @@ import {
     performDebloat,
     uploadToS3,
     createPackageService,
-} from "./util/packageUtils.js";
+} from "./utils/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 
 const API_URL =
