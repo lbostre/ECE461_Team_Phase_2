@@ -75,7 +75,6 @@ export async function handlePackagePost(
                 s3Url = await uploadToS3(contentToUpload, fileName);
             else if (data.URL) {
                 zipBase64 = await uploadGithubRepoAsZipToS3(data.URL, fileName);
-                console.log("Zip base64:", zipBase64);
             }
         }
 
