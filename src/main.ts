@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
-import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense } from './utils/repoUtils.js';
-import { fetchCommits, fetchIssues } from './utils/fetchData.js';
+import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense } from './util/repoUtils.js';
+import { fetchCommits, fetchIssues } from './util/fetchData.js';
 import { busFactor } from './metrics/busFactor.js';
 import { responsiveness } from './metrics/responsiveness.js';
 import { correctness } from './metrics/correctness.js';

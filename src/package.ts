@@ -10,7 +10,7 @@ import {
     uploadToS3,
     createPackageService,
     uploadGithubRepoAsZipToS3,
-} from "./utils/packageUtils.js";
+} from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 
 const API_URL =
