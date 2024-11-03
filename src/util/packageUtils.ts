@@ -2,6 +2,8 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { minify } from "terser";
 import { BUCKET_NAME, s3 } from "../../index.js";
 import { PackageData, PackageMetadata } from "../../types.js";
+import fs from "fs";
+import axios from "axios";
 
 export const generateUniqueId = (): string => {
     // Use a UUID library or custom logic to generate a unique ID
@@ -93,6 +95,75 @@ export const uploadToS3 = async (
     return data.Location;
 };
 
+// Function to download a file from S3 and save it to local storage
+export const downloadAndSaveFromS3 = async (
+    fileName: string,
+    localPath: string
+): Promise<void> => {
+    const params = {
+        Bucket: BUCKET_NAME,
+        Key: `packages/${fileName}`, // Adjust the key if your file is in a different path
+    };
+
+    try {
+        console.log(`Downloading file from S3: ${fileName}`);
+        const data = await s3.getObject(params).promise();
+
+        // Save the downloaded file to local storage
+        fs.writeFileSync(localPath, data.Body as Buffer);
+        console.log(`File saved locally as ${localPath}`);
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(`Error downloading or saving file: ${error.message}`);
+        } else {
+            console.error(`Error downloading or saving file: ${String(error)}`);
+        }
+        throw error; // Rethrow the error for further handling
+    }
+};
+
+export async function uploadGithubRepoAsZipToS3(
+    githubRepoUrl: string,
+    bucketName: string,
+    s3Key: string
+): Promise<string> {
+    try {
+        // Parse the repo details from the URL
+        const [owner, repo] = githubRepoUrl.split("/").slice(-2);
+        console.log("owner, repo", owner, repo);
+        // Construct the GitHub archive URL for the zip file
+        const githubZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
+
+        // Download the zip file from GitHub
+        const response = await axios({
+            url: githubZipUrl,
+            method: "GET",
+            responseType: "arraybuffer", // Important for handling binary data
+        });
+
+        // Buffer for the downloaded zip file
+        const zipBuffer: Buffer = Buffer.from(response.data);
+
+        // Upload the zip file to S3
+        const uploadParams: AWS.S3.PutObjectRequest = {
+            Bucket: bucketName,
+            Key: s3Key, // The file name in S3
+            Body: zipBuffer,
+            ContentType: "application/zip", // Set correct MIME type
+        };
+
+        const data: AWS.S3.ManagedUpload.SendData = await s3
+            .upload(uploadParams)
+            .promise();
+        console.log(`File uploaded successfully at ${data.Location}`);
+
+        return data.Location; // Return the uploaded file URL
+    } catch (error) {
+        console.error("Error uploading to S3:", error);
+        throw error;
+    }
+}
+
 // Perform the debloat using Terser
 export async function performDebloat(content: string): Promise<string> {
     try {
@@ -105,3 +176,15 @@ export async function performDebloat(content: string): Promise<string> {
         return content; // Return the original content in case of an error
     }
 }
+
+// // Example usage for S3 download and save
+// (async () => {
+//     const fileName = "example.zip"; // Replace with your file name
+//     const localPath = `./downloads/${fileName}`; // Local path where you want to save the file
+
+//     try {
+//         await downloadAndSaveFromS3(fileName, localPath);
+//     } catch (error) {
+//         console.error(`Failed to download file: ${error.message}`);
+//     }
+// })();
