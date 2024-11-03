@@ -124,8 +124,7 @@ export const downloadAndSaveFromS3 = async (
 
 export async function uploadGithubRepoAsZipToS3(
     githubRepoUrl: string,
-    bucketName: string,
-    s3Key: string
+    filName: string
 ): Promise<string> {
     try {
         console.log(`Starting uploadGithubRepoAsZipToS3 function.`);
@@ -155,21 +154,10 @@ export async function uploadGithubRepoAsZipToS3(
         console.log(`Converted zip file to base64 format.`);
 
         // Upload the base64 string to S3
-        const uploadParams: AWS.S3.PutObjectRequest = {
-            Bucket: bucketName,
-            Key: s3Key, // The file name in S3
-            Body: zipBase64,
-            ContentEncoding: "base64", // Specifies that the content is base64 encoded
-            ContentType: "application/zip", // Set correct MIME type
-        };
+        await uploadToS3(filName, zipBase64);
+        console.log(`Uploaded zip file to S3.`);
 
-        console.log(`Starting upload to S3 with params:`, uploadParams);
-        const data: AWS.S3.ManagedUpload.SendData = await s3
-            .upload(uploadParams)
-            .promise();
-        console.log(`File uploaded successfully to S3 at ${data.Location}`);
-
-        return data.Location; // Return the uploaded file URL
+        return zipBase64; // Return the uploaded file URL
     } catch (error) {
         console.error(
             "Error during uploadGithubRepoAsZipToS3 execution:",
