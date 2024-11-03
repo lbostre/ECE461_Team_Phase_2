@@ -150,15 +150,16 @@ export async function uploadGithubRepoAsZipToS3(
             `Download complete. Received ${response.data.byteLength} bytes.`
         );
 
-        // Buffer for the downloaded zip file
-        const zipBuffer: Buffer = Buffer.from(response.data);
-        console.log(`Converted response data to Buffer.`);
+        // Convert the downloaded zip file to a base64 string
+        const zipBase64 = Buffer.from(response.data).toString("base64");
+        console.log(`Converted zip file to base64 format.`);
 
-        // Upload the zip file to S3
+        // Upload the base64 string to S3
         const uploadParams: AWS.S3.PutObjectRequest = {
             Bucket: bucketName,
             Key: s3Key, // The file name in S3
-            Body: zipBuffer,
+            Body: zipBase64,
+            ContentEncoding: "base64", // Specifies that the content is base64 encoded
             ContentType: "application/zip", // Set correct MIME type
         };
 
