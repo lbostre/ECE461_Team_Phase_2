@@ -12,6 +12,7 @@ import {
     uploadGithubRepoAsZipToS3,
 } from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
+import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
@@ -74,6 +75,10 @@ export async function handlePackagePost(
             if (data.Content)
                 s3Url = await uploadToS3(contentToUpload, fileName);
             else if (data.URL) {
+                if (/^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(data.URL)) {
+                    data.URL = await getGithubUrlFromNpm(data.URL);
+                }
+                await getGithubUrlFromNpm(data.URL);
                 zipBase64 = await uploadGithubRepoAsZipToS3(data.URL, fileName);
             }
         }
