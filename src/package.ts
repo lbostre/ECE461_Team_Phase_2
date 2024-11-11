@@ -18,7 +18,7 @@ const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
 
 export async function handlePackagePost(
-    body: string | null
+    body: any
 ): Promise<APIGatewayProxyResult> {
     if (!body) {
         return {
@@ -29,16 +29,11 @@ export async function handlePackagePost(
 
     try {
         console.log("Body:", body);
-        const parsedBody: NewPackageRequestBody =
-            typeof body === "string" ? JSON.parse(body) : body;
-        console.log("Parsed Body:", JSON.parse(parsedBody.body));
-        const { data } = JSON.parse(parsedBody.body);
+        const { data } = body;
 
-        // Log incoming data
         console.log("Package data:", data);
         let name = "";
 
-        // Extract package name from the data
         if (data && data.Name) {
             name = data.Name;
         } else if (data.URL) {
@@ -47,7 +42,6 @@ export async function handlePackagePost(
         console.log("Package name:", name);
 
         if (data && data.Content && data.URL) {
-            // Check content or URL in data (only one can be set)
             return {
                 statusCode: 400,
                 body: JSON.stringify({
@@ -56,37 +50,52 @@ export async function handlePackagePost(
             };
         }
 
-        // Handle debloat if the option is set
         let contentToUpload = data.Content;
         if (data.Content && data.debloat) {
             console.log("Debloat option is true. Debloating content...");
-            contentToUpload = await performDebloat(data.Content);
-            console.log("Debloated content:", contentToUpload);
+            try {
+                contentToUpload = await performDebloat(data.Content);
+                console.log("Debloated content:", contentToUpload);
+            } catch (debloatError) {
+                console.error("Debloat function failed:", debloatError);
+                throw new Error("Debloat function failed");
+            }
         }
 
         let s3Url: string | undefined;
         let zipBase64: string | undefined;
 
-        // Upload content to S3 if 'Content' is provided
         if (contentToUpload || data.URL) {
-            const fileName = `${name}.zip`; // Adjust the extension if needed
-            if (data.Content)
-                s3Url = await uploadToS3(contentToUpload, fileName);
-            else if (data.URL) {
-                let githubURL = data.URL;
-                if (/^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(githubURL)) {
-                    githubURL = await getGithubUrlFromNpm(githubURL);
+            const fileName = `${name}.zip`;
+            try {
+                if (data.Content) {
+                    s3Url = await uploadToS3(contentToUpload, fileName);
+                } else if (data.URL) {
+                    let githubURL = data.URL;
+                    if (
+                        /^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(
+                            githubURL
+                        )
+                    ) {
+                        githubURL = await getGithubUrlFromNpm(githubURL);
+                    }
+                    zipBase64 = await uploadGithubRepoAsZipToS3(
+                        githubURL,
+                        fileName
+                    );
                 }
-                zipBase64 = await uploadGithubRepoAsZipToS3(
-                    githubURL,
-                    fileName
+            } catch (uploadError) {
+                console.error(
+                    "Upload to S3 or GitHub processing failed:",
+                    uploadError
+                );
+                throw new Error(
+                    "Failed to upload content to S3 or process GitHub repo"
                 );
             }
         }
 
-        // get rid of debloat key in the data object for response
         const { debloat, ...dataWithoutDebloat } = data;
-        // Call service function to create package with either URL or S3 URL
         const result = await createPackageService(name, {
             ...dataWithoutDebloat,
             ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
@@ -101,7 +110,7 @@ export async function handlePackagePost(
     } catch (error) {
         console.error("Error processing request:", error);
         return {
-            statusCode: 500, // Return 500 for internal server error
+            statusCode: 500,
             body: JSON.stringify({
                 error: "An error occurred while processing the request",
                 details: error instanceof Error ? error.message : String(error),
