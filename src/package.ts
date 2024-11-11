@@ -73,17 +73,22 @@ export async function handlePackagePost(
             if (data.Content)
                 s3Url = await uploadToS3(contentToUpload, fileName);
             else if (data.URL) {
-                if (/^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(data.URL)) {
-                    data.URL = await getGithubUrlFromNpm(data.URL);
+                let githubURL = data.URL;
+                if (/^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(githubURL)) {
+                    githubURL = await getGithubUrlFromNpm(githubURL);
                 }
-                await getGithubUrlFromNpm(data.URL);
-                zipBase64 = await uploadGithubRepoAsZipToS3(data.URL, fileName);
+                zipBase64 = await uploadGithubRepoAsZipToS3(
+                    githubURL,
+                    fileName
+                );
             }
         }
 
+        // get rid of debloat key in the data object for response
+        const { debloat, ...dataWithoutDebloat } = data;
         // Call service function to create package with either URL or S3 URL
         const result = await createPackageService(name, {
-            ...data,
+            ...dataWithoutDebloat,
             ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
         });
 
