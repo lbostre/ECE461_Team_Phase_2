@@ -32,24 +32,22 @@ export async function handlePackagePost(
         const parsedBody: NewPackageRequestBody =
             typeof body === "string" ? JSON.parse(body) : body;
         console.log("Parsed Body:", JSON.parse(parsedBody.body));
-        const { metadata, data } = JSON.parse(parsedBody.body);
+        const { data } = JSON.parse(parsedBody.body);
 
         // Log incoming data
-        console.log("Package metadata:", metadata);
         console.log("Package data:", data);
+        let name = "";
 
-        // Check required fields in metadata
-        if (!metadata || !metadata.Name || !metadata.Version || !metadata.ID) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({
-                    error: "Package metadata is missing required fields (Name, Version, ID)",
-                }),
-            };
+        // Extract package name from the data
+        if (data && data.Name) {
+            name = data.Name;
+        } else if (data.URL) {
+            name = data.URL.split("/").pop();
         }
+        console.log("Package name:", name);
 
-        // Check content or URL in data (only one can be set)
         if (data && data.Content && data.URL) {
+            // Check content or URL in data (only one can be set)
             return {
                 statusCode: 400,
                 body: JSON.stringify({
@@ -71,7 +69,7 @@ export async function handlePackagePost(
 
         // Upload content to S3 if 'Content' is provided
         if (contentToUpload || data.URL) {
-            const fileName = `${metadata.ID}-${metadata.Name}.zip`; // Adjust the extension if needed
+            const fileName = `${name}.zip`; // Adjust the extension if needed
             if (data.Content)
                 s3Url = await uploadToS3(contentToUpload, fileName);
             else if (data.URL) {
@@ -84,7 +82,7 @@ export async function handlePackagePost(
         }
 
         // Call service function to create package with either URL or S3 URL
-        const result = await createPackageService(metadata, {
+        const result = await createPackageService(name, {
             ...data,
             ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
         });

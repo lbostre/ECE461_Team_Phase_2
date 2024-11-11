@@ -11,11 +11,11 @@ export const generateUniqueId = (): string => {
 };
 
 // create result
-export const createPackageService = async (
-    metadata: PackageMetadata,
-    data: PackageData
-) => {
-    const newPackage = { metadata: metadata, data: { ...data } };
+export const createPackageService = async (name: string, data: PackageData) => {
+    const newPackage = {
+        metadata: { Name: name, Version: "1.0.0", ID: name.toLowerCase() },
+        data: { ...data },
+    };
     return newPackage;
 };
 
