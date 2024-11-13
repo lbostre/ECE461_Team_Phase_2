@@ -65,6 +65,7 @@ export async function handlePackagePost(
 
         let s3Url: string | undefined;
         let zipBase64: string | undefined;
+        let version: string = "1.0.0";
 
         if (contentToUpload || data.URL) {
             const fileName = `${name}.zip`;
@@ -79,6 +80,9 @@ export async function handlePackagePost(
                         )
                     ) {
                         githubURL = await getGithubUrlFromNpm(githubURL);
+                        version = await getRepositoryVersion(githubURL);
+                    } else {
+                        version = await getRepositoryVersion(data.URL);
                     }
                     zipBase64 = await uploadGithubRepoAsZipToS3(
                         githubURL,
@@ -95,9 +99,6 @@ export async function handlePackagePost(
                 );
             }
         }
-        const version = data.URL
-            ? await getRepositoryVersion(data.URL)
-            : "1.0.0";
         const { debloat, ...dataWithoutDebloat } = data;
         const result = await createPackageService(
             name,

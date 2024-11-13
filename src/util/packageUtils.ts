@@ -153,22 +153,28 @@ export async function getRepositoryVersion(url: string): Promise<string> {
 
     const [, owner, repo] = match;
 
-    // Call GitHub API to get the latest release
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+    // Call GitHub API to get the tags
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/tags`;
     try {
         const response = await fetch(apiUrl);
         const data = await response.json();
 
-        // Check for a valid tag_name in the response
-        if (data.tag_name) {
+        // Log the full response for debugging
+        console.log("GitHub API tags response:", data);
+
+        // Check if tags are available and find the latest tag
+        if (Array.isArray(data) && data.length > 0) {
+            // Assuming the first tag in the array is the latest
+            const latestTag = data[0].name;
+
             // Remove "v" prefix if it exists
-            const version = data.tag_name.startsWith("v")
-                ? data.tag_name.slice(1)
-                : data.tag_name;
+            const version = latestTag.startsWith("v")
+                ? latestTag.slice(1)
+                : latestTag;
             console.log("Latest version:", version);
             return version;
         } else {
-            console.log("No release version found, defaulting to 1.0.0");
+            console.log("No tags found, defaulting to 1.0.0");
             return "1.0.0";
         }
     } catch (error) {
