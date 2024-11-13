@@ -10,6 +10,7 @@ import {
     uploadToS3,
     createPackageService,
     uploadGithubRepoAsZipToS3,
+    getRepositoryVersion,
 } from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
@@ -94,12 +95,18 @@ export async function handlePackagePost(
                 );
             }
         }
-
+        const version = data.URL
+            ? await getRepositoryVersion(data.URL)
+            : "1.0.0";
         const { debloat, ...dataWithoutDebloat } = data;
-        const result = await createPackageService(name, {
-            ...dataWithoutDebloat,
-            ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
-        });
+        const result = await createPackageService(
+            name,
+            {
+                ...dataWithoutDebloat,
+                ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
+            },
+            version
+        );
 
         console.log("Package creation result:", result);
 

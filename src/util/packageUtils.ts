@@ -11,9 +11,13 @@ export const generateUniqueId = (): string => {
 };
 
 // create result
-export const createPackageService = async (name: string, data: PackageData) => {
+export const createPackageService = async (
+    name: string,
+    data: PackageData,
+    version: string
+) => {
     const newPackage = {
-        metadata: { Name: name, Version: "1.0.0", ID: name.toLowerCase() },
+        metadata: { Name: name, Version: version, ID: name.toLowerCase() },
         data: { ...data },
     };
     return newPackage;
@@ -136,6 +140,40 @@ export async function performDebloat(content: string): Promise<string> {
     } catch (error) {
         console.error("Error during debloat:", error);
         return content; // Return the original content in case of an error
+    }
+}
+
+export async function getRepositoryVersion(url: string): Promise<string> {
+    // Extract owner and repo from URL using regex
+    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+
+    if (!match) {
+        throw new Error("Invalid GitHub URL.");
+    }
+
+    const [, owner, repo] = match;
+
+    // Call GitHub API to get the latest release
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+    try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        // Check for a valid tag_name in the response
+        if (data.tag_name) {
+            // Remove "v" prefix if it exists
+            const version = data.tag_name.startsWith("v")
+                ? data.tag_name.slice(1)
+                : data.tag_name;
+            console.log("Latest version:", version);
+            return version;
+        } else {
+            console.log("No release version found, defaulting to 1.0.0");
+            return "1.0.0";
+        }
+    } catch (error) {
+        console.error("Error fetching version:", error);
+        return "1.0.0"; // Return default version if an error occurs
     }
 }
 
