@@ -222,6 +222,7 @@ function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
     else if (typeof repository === 'object' && repository.url) {
         // Check if URL is in standard format or includes "git+"
         url = repository.url.startsWith('git+') ? repository.url.slice(4) : repository.url;
+        url = repository.url.startsWith('git') ? repository.url.slice(4) : repository.url;
     }
 
     // Step 5: Strip trailing ".git" if present and ensure format
