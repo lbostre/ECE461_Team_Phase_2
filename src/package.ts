@@ -45,6 +45,7 @@ export async function handlePackagePost(
             URL: body.URL,
             Content: body.Content,
             debloat: body.debloat,
+            Name: body.Name
         };
 
         console.log("Package data:", data);
@@ -85,10 +86,7 @@ export async function handlePackagePost(
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
                             s3Url = await uploadToS3(contentToUpload, fileName);
-                            const packageName = extractPackageNameFromContent(data.Content);
-                            if (packageName != null && typeof packageName === 'string') {
-                                name = packageName;
-                            }
+                            name = data.Name;
                         }
                         else {
                             return {

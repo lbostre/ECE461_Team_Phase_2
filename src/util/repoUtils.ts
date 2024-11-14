@@ -5,6 +5,8 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import git from "isomorphic-git";
+import http from 'isomorphic-git/http/node';
 
 const execAsync = promisify(exec);
 
@@ -25,34 +27,30 @@ export async function getGithubUrlFromNpm(npmUrl: string): Promise<string | null
 }
 
 export async function cloneRepo(githubUrl: string) {
-    const repoName = githubUrl.split('/').slice(-1)[0];
-    const tempRepoPath = path.join('/tmp', 'cloned_repo', repoName);
+    const [owner, repo] = githubUrl.split('/').slice(-2);
+    const tempRepoPath = path.join('/tmp', 'cloned_repo', repo);
 
     // Ensure the base temporary directory exists
     if (!fs.existsSync(tempRepoPath)) {
         fs.mkdirSync(tempRepoPath, { recursive: true });
     }
 
-    // Construct the GitHub API URL to download the repo as a zip
-    const archiveUrl = `${githubUrl.replace('github.com', 'api.github.com/repos')}/zipball/main`;
-    const headers = {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${process.env.GITHUB_TOKEN}`, // Optional for private repos or rate limits
-    };
-
     try {
-        // Step 1: Download the repository archive
-        console.log(`Downloading repository archive from ${archiveUrl}...`);
-        const response = await axios.get(archiveUrl, { headers, responseType: 'arraybuffer' });
+        // Clone the entire repository into the temporary path
+        console.log(`Cloning repository ${repo} into ${tempRepoPath}...`);
+        await git.clone({
+            fs,
+            http,
+            dir: tempRepoPath,
+            url: `https://github.com/${owner}/${repo}`,
+            singleBranch: true,  
+            depth: 1,          
+        });
 
-        // Step 2: Load and fully extract the zip file in memory to /tmp
-        const zip = new AdmZip(response.data);
-        zip.extractAllTo(tempRepoPath, true);
-
-        console.log(`Repository fully extracted to: ${tempRepoPath}`);
+        console.log(`Repository fully cloned to: ${tempRepoPath}`);
         return tempRepoPath;
     } catch (error) {
-        console.error('Error downloading or extracting repository:', error);
+        console.error('Error cloning repository:', error);
         throw error;
     }
 }
