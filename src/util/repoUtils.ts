@@ -1,4 +1,4 @@
-import simpleGit from 'simple-git';
+import AdmZip from 'adm-zip';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
@@ -7,8 +7,6 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
-
-export const GIT = simpleGit();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,8 +27,40 @@ export async function getGithubUrlFromNpm(npmUrl: string): Promise<string | null
 export async function cloneRepo(githubUrl: string) {
     const repoName = githubUrl.split('/').slice(-1)[0];
     const repoPath = path.join(__dirname, 'cloned_repo', repoName);
-    await GIT.clone(githubUrl, repoPath, ['--depth', '1']);
-    return repoPath;
+
+    if (!fs.existsSync(path.join(__dirname, 'cloned_repo'))) {
+        fs.mkdirSync(path.join(__dirname, 'cloned_repo'));
+    }
+
+    const archiveUrl = `${githubUrl.replace('github.com', 'api.github.com/repos')}/zipball/main`;
+    const headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`, // Optional if you need authenticated requests
+    };
+
+    try {
+        // Download the zip file
+        console.log(`Downloading repository archive from ${archiveUrl}...`);
+        const response = await axios.get(archiveUrl, { headers, responseType: 'arraybuffer' });
+
+        // Write the zip file to disk
+        const zipPath = path.join(__dirname, `${repoName}.zip`);
+        fs.writeFileSync(zipPath, response.data);
+
+        // Extract the zip file
+        console.log('Extracting repository...');
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(repoPath, true);
+
+        // Clean up the zip file after extraction
+        fs.unlinkSync(zipPath);
+
+        console.log('Repository extracted to:', repoPath);
+        return repoPath;
+    } catch (error) {
+        console.error('Error downloading or extracting repository:', error);
+        throw error;
+    }
 }
 
 export async function cleanUpRepository(repoPath: string): Promise<void> {
