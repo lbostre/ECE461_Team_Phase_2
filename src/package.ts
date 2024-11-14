@@ -76,6 +76,7 @@ export async function handlePackagePost(
         let zipBase64: string | undefined;
         let version: string = "1.0.0";
         let metricsResult: RepoDataResult | null = null;
+        let url = "";
 
         if (contentToUpload || data.URL) {
             const fileName = `${name}.zip`;
@@ -87,6 +88,7 @@ export async function handlePackagePost(
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
                             s3Url = await uploadToS3(contentToUpload, fileName);
                             name = data.Name;
+                            url = URL;
                         }
                         else {
                             return {
@@ -116,6 +118,7 @@ export async function handlePackagePost(
                             fileName
                         );
                         name = data.URL.split("/").pop();
+                        url = githubURL;
                     }
                     else {
                         return {
@@ -155,6 +158,7 @@ export async function handlePackagePost(
                         TableName: 'ECE461_Database',  
                         Item: {
                             ECEfoursixone: result.metadata.ID,  
+                            URL: url,
                             Metrics: metricsResult       
                         },
                     };
