@@ -4,6 +4,7 @@ import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Root from "./routes/root.tsx";
 import Upload from "./routes/upload.tsx";
+import Package from "./routes/package.tsx";
 
 const router = createBrowserRouter([
     {
@@ -13,6 +14,10 @@ const router = createBrowserRouter([
     {
         path: "/upload",
         element: <Upload />,
+    },
+    {
+        path: "/package/:name",
+        element: <Package />,
     },
 ]);
 

@@ -6,8 +6,8 @@ import { Link } from "react-router-dom";
 export default function Root() {
     const [packageName, setPackageName] = useState("");
     return (
-        <div className="flex flex-col items-center w-screen">
-            <div className="flex flex-col gap-4 items-center w-[600px]">
+        <div className="flex flex-col items-center justify-center w-screen h-screen">
+            <div className="flex flex-col gap-4 items-center w-[600px] h-fit">
                 <h1 className="font-bold text-2xl">Search Packages</h1>
                 <div className="w-full flex flex-row gap-2">
                     <Input
