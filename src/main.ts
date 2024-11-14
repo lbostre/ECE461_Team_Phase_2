@@ -50,96 +50,82 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
         console.log('Cloning repository...');
         const repoPath = await cloneRepo(repoURL);
         console.log('Repository cloned at path:', repoPath);
+        try {
+            console.log('Searching for README...');
+            const readme = await findReadme(repoPath);
+            console.log('Found README:', readme);
 
-        console.log('Searching for README...');
-        const readme = await findReadme(repoPath);
-        console.log('Found README:', readme);
+            console.log('Searching for LICENSE...');
+            const license = await findLicense(repoPath, readme);
+            console.log('Found LICENSE:', license);
 
-        console.log('Searching for LICENSE...');
-        const license = await findLicense(repoPath, readme);
-        console.log('Found LICENSE:', license);
+            // Fetch data from API
+            console.log('Fetching commits...');
+            const uniqueContributors = await fetchCommits(commitsUrl, headers);
+            console.log('Fetched commits. Unique contributors:', uniqueContributors.length);
 
-        // Fetch data from API
-        console.log('Fetching commits...');
-        const uniqueContributors = await fetchCommits(commitsUrl, headers);
-        console.log('Fetched commits. Unique contributors:', uniqueContributors.length);
+            console.log('Fetching issues...');
+            const { openIssues, closedIssues, issueDurations } = await fetchIssues(issuesUrl, headers);
+            console.log(`Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`);
 
-        console.log('Fetching issues...');
-        const { openIssues, closedIssues, issueDurations } = await fetchIssues(issuesUrl, headers);
-        console.log(`Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`);
+            // Calculate each metric in parallel
+            console.log('Calculating metrics...');
+            const [
+                { busFactorValue, busFactorEnd },
+                { correctnessValue, correctnessEnd },
+                { responsivenessValue, responsivenessEnd },
+                { rampUpTimeValue, rampUpTimeEnd },
+                { licenseCompatabilityValue, licenseEnd }
+            ] = await Promise.all([
+                busFactor(uniqueContributors),
+                correctness(openIssues, closedIssues),
+                responsiveness(issueDurations),
+                rampUpTime(readme),
+                licensing(license)
+            ]);
+            console.log('Metrics calculated successfully');
 
-        // Calculate each metric in parallel
-        console.log('Calculating metrics...');
-        const [
-            { busFactorValue, busFactorEnd },
-            { correctnessValue, correctnessEnd },
-            { responsivenessValue, responsivenessEnd },
-            { rampUpTimeValue, rampUpTimeEnd },
-            { licenseCompatabilityValue, licenseEnd }
-        ] = await Promise.all([
-            busFactor(uniqueContributors),
-            correctness(openIssues, closedIssues),
-            responsiveness(issueDurations),
-            rampUpTime(readme),
-            licensing(license)
-        ]);
-        console.log('Metrics calculated successfully');
+            // Calculate overall score
+            console.log('Calculating overall score...');
+            const netScore = await calculateScore(
+                busFactorValue,
+                responsivenessValue,
+                correctnessValue,
+                rampUpTimeValue,
+                licenseCompatabilityValue
+            );
+            const scoreEnd = Date.now();
+            console.log('Score calculated:', netScore);
 
-        // Calculate overall score
-        console.log('Calculating overall score...');
-        const netScore = await calculateScore(
-            busFactorValue,
-            responsivenessValue,
-            correctnessValue,
-            rampUpTimeValue,
-            licenseCompatabilityValue
-        );
-        const scoreEnd = Date.now();
-        console.log('Score calculated:', netScore);
+            // Calculate and log latency for each metric
+            const busFactorLatency = (busFactorEnd - clockStart) / 1000;
+            const correctnessLatency = (correctnessEnd - clockStart) / 1000;
+            const responsivenessLatency = (responsivenessEnd - clockStart) / 1000;
+            const rampUpTimeLatency = (rampUpTimeEnd - clockStart) / 1000;
+            const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
 
-        // Calculate and log latency for each metric
-        const busFactorLatency = (busFactorEnd - clockStart) / 1000;
-        const correctnessLatency = (correctnessEnd - clockStart) / 1000;
-        const responsivenessLatency = (responsivenessEnd - clockStart) / 1000;
-        const rampUpTimeLatency = (rampUpTimeEnd - clockStart) / 1000;
-        const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
-
-        const result: RepoDataResult = {
-            URL: repoURL,
-            NetScore: netScore,
-            NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
-            RampUp: rampUpTimeValue,
-            RampUp_Latency: rampUpTimeLatency,
-            Correctness: correctnessValue,
-            Correctness_Latency: correctnessLatency,
-            BusFactor: busFactorValue,
-            BusFactor_Latency: busFactorLatency,
-            ResponsiveMaintainer: responsivenessValue,
-            ResponsiveMaintainer_Latency: responsivenessLatency,
-            License: licenseCompatabilityValue,
-            License_Latency: licenseCompatabilityLatency,
-        };
-
-        await cleanUpRepository(repoPath);
-
-        console.log('Final Result:', result);
-        return result;
+            const result: RepoDataResult = {
+                URL: repoURL,
+                NetScore: netScore,
+                NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
+                RampUp: rampUpTimeValue,
+                RampUp_Latency: rampUpTimeLatency,
+                Correctness: correctnessValue,
+                Correctness_Latency: correctnessLatency,
+                BusFactor: busFactorValue,
+                BusFactor_Latency: busFactorLatency,
+                ResponsiveMaintainer: responsivenessValue,
+                ResponsiveMaintainer_Latency: responsivenessLatency,
+                License: licenseCompatabilityValue,
+                License_Latency: licenseCompatabilityLatency,
+            };
+            console.log('Final Result:', result);
+            return result;
+        } finally {
+            await cleanUpRepository(repoPath);
+        }
     } catch (error) {
         console.error('Error fetching repository data for', repoURL, error);
-        return {
-            URL: repoURL,
-            NetScore: -1,
-            NetScore_Latency: -1,
-            RampUp: -1,
-            RampUp_Latency: -1,
-            Correctness: -1,
-            Correctness_Latency: -1,
-            BusFactor: -1,
-            BusFactor_Latency: -1,
-            ResponsiveMaintainer: -1,
-            ResponsiveMaintainer_Latency: -1,
-            License: -1,
-            License_Latency: -1,
-        };
+        return null;
     }
 }

@@ -26,37 +26,31 @@ export async function getGithubUrlFromNpm(npmUrl: string): Promise<string | null
 
 export async function cloneRepo(githubUrl: string) {
     const repoName = githubUrl.split('/').slice(-1)[0];
-    const repoPath = path.join(__dirname, 'cloned_repo', repoName);
+    const tempRepoPath = path.join('/tmp', 'cloned_repo', repoName);
 
-    if (!fs.existsSync(path.join(__dirname, 'cloned_repo'))) {
-        fs.mkdirSync(path.join(__dirname, 'cloned_repo'));
+    // Ensure the base temporary directory exists
+    if (!fs.existsSync(tempRepoPath)) {
+        fs.mkdirSync(tempRepoPath, { recursive: true });
     }
 
+    // Construct the GitHub API URL to download the repo as a zip
     const archiveUrl = `${githubUrl.replace('github.com', 'api.github.com/repos')}/zipball/main`;
     const headers = {
         'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${process.env.GITHUB_TOKEN}`, // Optional if you need authenticated requests
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`, // Optional for private repos or rate limits
     };
 
     try {
-        // Download the zip file
+        // Step 1: Download the repository archive
         console.log(`Downloading repository archive from ${archiveUrl}...`);
         const response = await axios.get(archiveUrl, { headers, responseType: 'arraybuffer' });
 
-        // Write the zip file to disk
-        const zipPath = path.join(__dirname, `${repoName}.zip`);
-        fs.writeFileSync(zipPath, response.data);
+        // Step 2: Load and fully extract the zip file in memory to /tmp
+        const zip = new AdmZip(response.data);
+        zip.extractAllTo(tempRepoPath, true);
 
-        // Extract the zip file
-        console.log('Extracting repository...');
-        const zip = new AdmZip(zipPath);
-        zip.extractAllTo(repoPath, true);
-
-        // Clean up the zip file after extraction
-        fs.unlinkSync(zipPath);
-
-        console.log('Repository extracted to:', repoPath);
-        return repoPath;
+        console.log(`Repository fully extracted to: ${tempRepoPath}`);
+        return tempRepoPath;
     } catch (error) {
         console.error('Error downloading or extracting repository:', error);
         throw error;
@@ -64,14 +58,16 @@ export async function cloneRepo(githubUrl: string) {
 }
 
 export async function cleanUpRepository(repoPath: string): Promise<void> {
-	if (!fs.existsSync(repoPath) || !fs.statSync(repoPath).isDirectory()) {
-        throw new Error('Failed to delete repository');
+    if (!fs.existsSync(repoPath) || !fs.statSync(repoPath).isDirectory()) {
+        throw new Error('Failed to delete repository: path does not exist or is not a directory');
     }
     try {
-        await execAsync(`rm -rf ${repoPath}`);
+        // Use fs.promises.rm for recursive deletion
+        await fs.promises.rm(repoPath, { recursive: true, force: true });
+        console.log(`Successfully deleted repository at ${repoPath}`);
     } catch (error) {
-        const err = error as Error;
-        throw err;
+        console.error(`Error deleting repository at ${repoPath}:`, error);
+        throw error;
     }
 }
 
