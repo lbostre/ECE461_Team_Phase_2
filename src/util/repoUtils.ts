@@ -3,6 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export const GIT = simpleGit();
 
@@ -27,6 +31,18 @@ export async function cloneRepo(githubUrl: string) {
     const repoPath = path.join(__dirname, 'cloned_repo', repoName);
     await GIT.clone(githubUrl, repoPath, ['--depth', '1']);
     return repoPath;
+}
+
+export async function cleanUpRepository(repoPath: string): Promise<void> {
+	if (!fs.existsSync(repoPath) || !fs.statSync(repoPath).isDirectory()) {
+        throw new Error('Failed to delete repository');
+    }
+    try {
+        await execAsync(`rm -rf ${repoPath}`);
+    } catch (error) {
+        const err = error as Error;
+        throw err;
+    }
 }
 
 export async function fileExists(filePath: fs.PathLike) {

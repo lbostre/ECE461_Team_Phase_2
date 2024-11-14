@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense } from './util/repoUtils.js';
+import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense, cleanUpRepository } from './util/repoUtils.js';
 import { fetchCommits, fetchIssues } from './util/fetchData.js';
 import { busFactor } from './metrics/busFactor.js';
 import { responsiveness } from './metrics/responsiveness.js';
@@ -7,17 +7,18 @@ import { correctness } from './metrics/correctness.js';
 import { rampUpTime } from './metrics/rampUpTime.js';
 import { licensing } from './metrics/licensing.js';
 import { calculateScore } from './metrics/calculateScore.js';
+import { RepoDataResult } from '../types.js';
 
 dotenv.config();
 
-async function getRepoData(repoURL: string) {
+export async function getRepoData(repoURL: string): Promise<RepoDataResult | null> {
     const clockStart = Date.now();
     console.log('Starting getRepoData with URL:', repoURL);
 
     // Validate and process GitHub URL
     if (!repoURL) {
         console.error('Invalid GitHub URL:', repoURL);
-        return;
+        return null;
     }
 
     if (repoURL.includes('npmjs.com')) {
@@ -28,7 +29,7 @@ async function getRepoData(repoURL: string) {
             console.log('Converted NPM URL to GitHub URL:', repoURL);
         } else {
             console.error('Failed to retrieve GitHub URL from NPM package');
-            return;
+            return null;
         }
     }
     const GITHUB_API_URL = convertToApiUrl(repoURL);
@@ -103,7 +104,7 @@ async function getRepoData(repoURL: string) {
         const rampUpTimeLatency = (rampUpTimeEnd - clockStart) / 1000;
         const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
 
-        const result = {
+        const result: RepoDataResult = {
             URL: repoURL,
             NetScore: netScore,
             NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
@@ -118,6 +119,8 @@ async function getRepoData(repoURL: string) {
             License: licenseCompatabilityValue,
             License_Latency: licenseCompatabilityLatency,
         };
+
+        await cleanUpRepository(repoPath);
 
         console.log('Final Result:', result);
         return result;
@@ -140,6 +143,3 @@ async function getRepoData(repoURL: string) {
         };
     }
 }
-
-const githubUrl = 'https://github.com/cloudinary/cloudinary_npm'; 
-getRepoData(githubUrl).then(data => console.log('Repo Data:', data));

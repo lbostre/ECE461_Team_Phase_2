@@ -4,6 +4,7 @@ import { BUCKET_NAME, s3 } from "../../index.js";
 import { PackageData, PackageMetadata } from "../../types.js";
 import fs from "fs";
 import axios from "axios";
+import AdmZip from 'adm-zip';
 
 export const generateUniqueId = (): string => {
     // Use a UUID library or custom logic to generate a unique ID
@@ -181,6 +182,60 @@ export async function getRepositoryVersion(url: string): Promise<string> {
         console.error("Error fetching version:", error);
         return "1.0.0"; // Return default version if an error occurs
     }
+}
+
+export async function extractPackageJsonUrl(contentBase64: string): Promise<string | null> {
+    // Step 1: Decode the base64 content
+    const buffer = Buffer.from(contentBase64, 'base64');
+
+    // Step 2: Load the content into a zip extractor
+    const zip = new AdmZip(buffer);
+
+    // Step 3: Search for package.json file
+    const packageJsonEntry = zip.getEntry('package.json');
+    if (!packageJsonEntry) {
+        console.error("package.json not found in content");
+        return null;
+    }
+
+    // Step 4: Parse package.json to get the repository URL
+    const packageJsonContent = packageJsonEntry.getData().toString('utf8');
+    const packageJson = JSON.parse(packageJsonContent);
+
+    return getRepositoryUrlFromPackageJson(packageJson);
+}
+
+function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
+    const repository = packageJson?.repository;
+
+    if (!repository) return null;
+
+    let url = '';
+
+    // Case 1: repository as a string
+    if (typeof repository === 'string') {
+        // Assume GitHub shorthand like "eslint/eslintrc"
+        url = `https://github.com/${repository}`;
+    }
+
+    // Case 2: repository as an object with "url" field
+    else if (typeof repository === 'object' && repository.url) {
+        // Check if URL is in standard format or includes "git+"
+        url = repository.url.startsWith('git+') ? repository.url.slice(4) : repository.url;
+    }
+
+    // Step 5: Strip trailing ".git" if present and ensure format
+    if (url.endsWith('.git')) {
+        url = url.slice(0, -4);
+    }
+
+    // Validate URL structure and ensure it's in GitHub format
+    const match = url.match(/https?:\/\/github\.com\/([^/]+)\/([^/]+)/);
+    if (match) {
+        return `https://github.com/${match[1]}/${match[2]}`;
+    }
+
+    return null;
 }
 
 // // Example usage for S3 download and save

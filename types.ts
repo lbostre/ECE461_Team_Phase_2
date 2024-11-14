@@ -30,3 +30,19 @@ export interface Package {
     ID: PackageID; // Unique identifier for the package
     content?: string; // Content of the package, optional as it may not always be fetched
 }
+
+export interface RepoDataResult {
+    URL: string;                   // Repository URL
+    NetScore: number;              // Overall score
+    NetScore_Latency: number;      // Latency time for score calculation
+    RampUp: number;                // Ramp-up time score
+    RampUp_Latency: number;        // Latency time for ramp-up score calculation
+    Correctness: number;           // Correctness score
+    Correctness_Latency: number;   // Latency time for correctness calculation
+    BusFactor: number;             // Bus factor score
+    BusFactor_Latency: number;     // Latency time for bus factor calculation
+    ResponsiveMaintainer: number;  // Responsiveness score
+    ResponsiveMaintainer_Latency: number; // Latency time for responsiveness calculation
+    License: number;               // License compatibility score
+    License_Latency: number;       // Latency time for license compatibility calculation
+}

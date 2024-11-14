@@ -4,6 +4,7 @@ import {
     Package,
     PackageID,
     PackageRequestBody,
+    RepoDataResult,
 } from "../types.js";
 import {
     performDebloat,
@@ -11,9 +12,13 @@ import {
     createPackageService,
     uploadGithubRepoAsZipToS3,
     getRepositoryVersion,
+    extractPackageJsonUrl,
 } from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
+import { getRepoData } from "./main.js";
+import AWS from 'aws-sdk';
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
@@ -66,12 +71,27 @@ export async function handlePackagePost(
         let s3Url: string | undefined;
         let zipBase64: string | undefined;
         let version: string = "1.0.0";
+        let metricsResult: RepoDataResult | null = null;
 
         if (contentToUpload || data.URL) {
             const fileName = `${name}.zip`;
             try {
                 if (data.Content) {
-                    s3Url = await uploadToS3(contentToUpload, fileName);
+                    const URL = await extractPackageJsonUrl(data.Content);
+                    if (URL != null) {
+                        metricsResult = await getRepoData(URL);
+                        if (metricsResult && metricsResult.NetScore >= 0.5) {
+                            s3Url = await uploadToS3(contentToUpload, fileName);
+                        }
+                        else {
+                            return {
+                                statusCode: 424,
+                                body: JSON.stringify({
+                                    error: "Package is not uploaded due to the disqualified rating.",
+                                }),
+                            };
+                        }
+                    }
                 } else if (data.URL) {
                     let githubURL = data.URL;
                     if (
@@ -84,10 +104,21 @@ export async function handlePackagePost(
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
-                    zipBase64 = await uploadGithubRepoAsZipToS3(
-                        githubURL,
-                        fileName
-                    );
+                    metricsResult = await getRepoData(data.URL);
+                    if (metricsResult && metricsResult.NetScore >= 0.5) {
+                        zipBase64 = await uploadGithubRepoAsZipToS3(
+                            githubURL,
+                            fileName
+                        );
+                    }
+                    else {
+                        return {
+                            statusCode: 424,
+                            body: JSON.stringify({
+                                error: "Package is not uploaded due to the disqualified rating.",
+                            }),
+                        };
+                    }
                 }
             } catch (uploadError) {
                 console.error(
@@ -110,6 +141,31 @@ export async function handlePackagePost(
         );
 
         console.log("Package creation result:", result);
+
+        if (metricsResult && metricsResult.NetScore >= 0.5) {
+            if (zipBase64 || s3Url) {
+                try {
+                    const dynamoParams = {
+                        TableName: 'ECE461_Database',  
+                        Item: {
+                            ECEfoursixone: result.metadata.ID,  
+                            Metrics: metricsResult       
+                        },
+                    };
+                    await dynamoDb.put(dynamoParams).promise();
+                    console.log("Metrics successfully stored in DynamoDB.");
+                } catch (error) {
+                    console.error("Error storing metrics in DynamoDB:", error);
+                    return {
+                        statusCode: 500,
+                        body: JSON.stringify({
+                            error: "Failed to store metrics in DynamoDB",
+                            details: error instanceof Error ? error.message : String(error),
+                        }),
+                    };
+                }
+            }
+        }
 
         return {
             statusCode: 201,
