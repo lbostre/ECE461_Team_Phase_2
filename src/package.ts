@@ -34,6 +34,10 @@ export async function handlePackagePost(
     }
 
     try {
+        if (typeof body === 'string') {
+            body = JSON.parse(body);
+        }
+
         console.log("Body:", body);
         const { data } = body;
 
