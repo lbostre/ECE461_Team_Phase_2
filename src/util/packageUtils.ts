@@ -239,6 +239,27 @@ function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
     return null;
 }
 
+export async function extractPackageNameFromContent(contentBase64: string): Promise<string | null> {
+    // Step 1: Decode the base64 content
+    const buffer = Buffer.from(contentBase64, 'base64');
+
+    // Step 2: Load the content into a zip extractor
+    const zip = new AdmZip(buffer);
+
+    // Step 3: Search for package.json file
+    const packageJsonEntry = zip.getEntry('package.json');
+    if (!packageJsonEntry) {
+        console.error("package.json not found in content");
+        return null;
+    }
+
+    // Step 4: Parse package.json to get the package name
+    const packageJsonContent = packageJsonEntry.getData().toString('utf8');
+    const packageJson = JSON.parse(packageJsonContent);
+
+    return packageJson.name || null;
+}
+
 // // Example usage for S3 download and save
 // (async () => {
 //     const fileName = "example.zip"; // Replace with your file name

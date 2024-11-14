@@ -13,6 +13,7 @@ import {
     uploadGithubRepoAsZipToS3,
     getRepositoryVersion,
     extractPackageJsonUrl,
+    extractPackageNameFromContent,
 } from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
@@ -39,17 +40,15 @@ export async function handlePackagePost(
         }
 
         console.log("Body:", body);
-        const { data } = body;
+        const data = {
+            JSProgram: body.JSProgram,
+            URL: body.URL,
+            Content: body.Content,
+            debloat: body.debloat,
+        };
 
         console.log("Package data:", data);
         let name = "";
-
-        if (data && data.Name) {
-            name = data.Name;
-        } else if (data.URL) {
-            name = data.URL.split("/").pop();
-        }
-        console.log("Package name:", name);
 
         if (data && data.Content && data.URL) {
             return {
@@ -86,6 +85,10 @@ export async function handlePackagePost(
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
                             s3Url = await uploadToS3(contentToUpload, fileName);
+                            const packageName = extractPackageNameFromContent(data.Content);
+                            if (packageName != null && typeof packageName === 'string') {
+                                name = packageName;
+                            }
                         }
                         else {
                             return {
@@ -114,6 +117,7 @@ export async function handlePackagePost(
                             githubURL,
                             fileName
                         );
+                        name = data.URL.split("/").pop();
                     }
                     else {
                         return {
