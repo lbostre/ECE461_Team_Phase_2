@@ -21,7 +21,7 @@ export const createPackageService = async (
     version: string
 ) => {
     const newPackage = {
-        metadata: { Name: name, Version: version, ID: `${name.toLowerCase()}${version.replace(/\./g, "")}` },
+        metadata: { Name: name.replace(/\d+$/, ''), Version: version, ID: `${name.toLowerCase()}` },
         data: { ...data },
     };
     return newPackage;
