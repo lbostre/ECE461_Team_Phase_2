@@ -251,7 +251,7 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ Metrics: metrics }),
+            body: JSON.stringify({ PackageRating: metrics }),
         };
     } catch (error) {
         console.error(`Error fetching metrics for package with ID ${id}:`, error);

@@ -105,19 +105,18 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
 
             const result: RepoDataResult = {
-                URL: repoURL,
-                NetScore: netScore,
-                NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
-                RampUp: rampUpTimeValue,
-                RampUp_Latency: rampUpTimeLatency,
-                Correctness: correctnessValue,
-                Correctness_Latency: correctnessLatency,
                 BusFactor: busFactorValue,
                 BusFactor_Latency: busFactorLatency,
+                Correctness: correctnessValue,
+                Correctness_Latency: correctnessLatency,
+                RampUp: rampUpTimeValue,
+                RampUp_Latency: rampUpTimeLatency,
                 ResponsiveMaintainer: responsivenessValue,
                 ResponsiveMaintainer_Latency: responsivenessLatency,
                 License: licenseCompatabilityValue,
                 License_Latency: licenseCompatabilityLatency,
+                NetScore: netScore,
+                NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
             };
             console.log('Final Result:', result);
             return result;
