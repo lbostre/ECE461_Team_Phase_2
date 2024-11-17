@@ -86,7 +86,8 @@ export async function handlePackagePost(
             try {
                 if (data.Content) {
                     const URL = await extractPackageJsonUrl(data.Content);
-                    name = data.Name;
+                    version = await extractVersionFromPackageJson(data.Content);
+                    name = `${data.Name}${version.replace(/\./g, "")}`;
                     const fileName = `${name}.zip`;
                     if (URL != null) {
                         metricsResult = await getRepoData(URL);
@@ -116,15 +117,14 @@ export async function handlePackagePost(
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
-                    name = githubURL.split("/").pop();
+                    name = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}`;
                     const fileName = `${name}.zip`;
-                    metricsResult = await getRepoData(data.URL);
+                    metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
                         zipBase64 = await uploadGithubRepoAsZipToS3(
                             githubURL,
                             fileName
                         );
-                        name = data.URL.split("/").pop();
                         url = githubURL;
                     }
                     else {
