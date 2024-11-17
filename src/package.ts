@@ -5,6 +5,8 @@ import {
     PackageID,
     PackageRequestBody,
     RepoDataResult,
+    PackageMetadata, 
+    PackageData,
 } from "../types.js";
 import {
     performDebloat,
@@ -13,13 +15,15 @@ import {
     uploadGithubRepoAsZipToS3,
     getRepositoryVersion,
     extractPackageJsonUrl,
-    extractPackageNameFromContent,
+    extractVersionFromPackageJson,
+    fetchPackageById,
 } from "./util/packageUtils.js";
 import { BUCKET_NAME, s3 } from "../index.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
 import AWS from 'aws-sdk';
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const TABLE_NAME = 'ECE461_Database';
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
@@ -89,6 +93,7 @@ export async function handlePackagePost(
                             s3Url = await uploadToS3(contentToUpload, fileName);
                             name = data.Name;
                             url = URL;
+                            version = await extractVersionFromPackageJson(data.Content);
                         }
                         else {
                             return {
@@ -155,10 +160,12 @@ export async function handlePackagePost(
             if (zipBase64 || s3Url) {
                 try {
                     const dynamoParams = {
-                        TableName: 'ECE461_Database',  
+                        TableName: TABLE_NAME,  
                         Item: {
-                            ECEfoursixone: result.metadata.ID,  
+                            ECEfoursixone: result.metadata.ID,
+                            Version: version,  
                             URL: url,
+                            JSProgram: data.JSProgram,
                             Metrics: metricsResult       
                         },
                     };
@@ -193,43 +200,10 @@ export async function handlePackagePost(
     }
 }
 
-// Function to fetch a package by its ID from the S3 bucket
-async function fetchPackageById(id: string): Promise<Package | null> {
-    const params = {
-        Bucket: BUCKET_NAME,
-        Key: `packages/${id}.zip`, // Assuming the package zip files are named <id>.zip
-    };
-
-    console.log(
-        `Fetching package with ID: ${id} from S3 bucket: ${BUCKET_NAME}`
-    );
-
-    try {
-        // Try to get the object from S3
-        const data = await s3.getObject(params).promise();
-        console.log(`Successfully fetched package data for ID: ${id}`);
-
-        // If successful, return the package data
-        const packageData: Package = {
-            ID: id,
-            content: data.Body?.toString("utf-8") || "No content available",
-        };
-
-        console.log("Fetched package data:", packageData);
-        return packageData;
-    } catch (error) {
-        console.error(`Error fetching package with ID ${id}:`, error);
-        return null; // Return null in case of an error
-    }
-}
-
 // Handle the GET request for the package/{id} endpoint
-export async function handlePackageGet(
-    id: string
-): Promise<APIGatewayProxyResult> {
+export async function handlePackageGet(id: string): Promise<APIGatewayProxyResult> {
     console.log(`Handling GET request for package with ID: ${id}`);
 
-    // Fetch the package by ID
     const packageData = await fetchPackageById(id);
 
     if (!packageData) {

@@ -7,6 +7,7 @@ export interface PackageMetadata {
 export interface PackageData {
     Content?: string; // Code or content of the package
     URL?: string; // Link to the package file
+    JSProgram?: string;
     debloat?: boolean; // Optional flag for debloating
 }
 
@@ -27,8 +28,6 @@ export type PackageID = string;
 export interface Package {
     metadata?: PackageMetadata;
     data?: PackageData;
-    ID: PackageID; // Unique identifier for the package
-    content?: string; // Content of the package, optional as it may not always be fetched
 }
 
 export interface RepoDataResult {

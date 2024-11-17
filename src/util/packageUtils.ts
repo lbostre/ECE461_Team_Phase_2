@@ -1,10 +1,13 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { minify } from "terser";
 import { BUCKET_NAME, s3 } from "../../index.js";
-import { PackageData, PackageMetadata } from "../../types.js";
+import { Package, PackageData, PackageMetadata } from "../../types.js";
 import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
+import AWS from 'aws-sdk';
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const TABLE_NAME = 'ECE461_Database';
 
 export const generateUniqueId = (): string => {
     // Use a UUID library or custom logic to generate a unique ID
@@ -18,7 +21,7 @@ export const createPackageService = async (
     version: string
 ) => {
     const newPackage = {
-        metadata: { Name: name, Version: version, ID: name.toLowerCase() },
+        metadata: { Name: name, Version: version, ID: `${name.toLowerCase()}${version.replace(/\./g, "")}` },
         data: { ...data },
     };
     return newPackage;
@@ -239,7 +242,7 @@ function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
     return null;
 }
 
-export async function extractPackageNameFromContent(contentBase64: string): Promise<string | null> {
+export async function extractVersionFromPackageJson(contentBase64: string): Promise<string> {
     // Step 1: Decode the base64 content
     const buffer = Buffer.from(contentBase64, 'base64');
 
@@ -250,14 +253,65 @@ export async function extractPackageNameFromContent(contentBase64: string): Prom
     const packageJsonEntry = zip.getEntry('package.json');
     if (!packageJsonEntry) {
         console.error("package.json not found in content");
-        return null;
+        return "1.0.0";
     }
 
-    // Step 4: Parse package.json to get the package name
+    // Step 4: Parse package.json to get the package version
     const packageJsonContent = packageJsonEntry.getData().toString('utf8');
     const packageJson = JSON.parse(packageJsonContent);
 
-    return packageJson.name || null;
+    return packageJson.version || "1.0.0";
+}
+
+export async function fetchPackageById(id: string): Promise<Package | null> {
+    console.log(`Fetching package metadata from DynamoDB for ID: ${id}`);
+
+    // Step 1: Fetch Version and URL from DynamoDB
+    try {
+        const dynamoResult = await dynamoDb.get({
+            TableName: TABLE_NAME,
+            Key: { ECEfoursixone: id },
+        }).promise();
+
+        if (!dynamoResult.Item) {
+            console.error(`No metadata found in DynamoDB for ID: ${id}`);
+            return null;
+        }
+
+        const { Version, URL, JSProgram } = dynamoResult.Item;
+        console.log(`Retrieved Version: ${Version}, URL: ${URL} from DynamoDB for ID: ${id}`);
+
+        const name = id.replace(/\d+$/, "");
+
+        // Step 2: Fetch package content from S3
+        const params = {
+            Bucket: BUCKET_NAME,
+            Key: `packages/${id}.zip`,
+        };
+        const s3Data = await s3.getObject(params).promise();
+        const content = s3Data.Body?.toString("base64") || "";
+
+        // Step 3: Construct the package response
+        const packageData: Package = {
+            metadata: {
+                Name: name, // Extracts Name if ID includes Version
+                Version: Version,
+                ID: id,
+            },
+            data: {
+                Content: content,
+                URL: URL,
+                JSProgram: JSProgram,
+            },
+        };
+
+        console.log("Fetched package data:", packageData);
+        return packageData;
+
+    } catch (error) {
+        console.error(`Error fetching package with ID ${id}:`, error);
+        return null;
+    }
 }
 
 // // Example usage for S3 download and save
