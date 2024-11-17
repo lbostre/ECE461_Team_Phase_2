@@ -222,3 +222,42 @@ export async function handlePackageGet(id: string): Promise<APIGatewayProxyResul
         body: JSON.stringify(packageData),
     };
 }
+
+export async function handlePackageRate(id: string): Promise<APIGatewayProxyResult> {
+    try {
+        console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
+
+        const dynamoResult = await dynamoDb
+            .get({
+                TableName: TABLE_NAME,
+                Key: { ECEfoursixone: id },
+                ProjectionExpression: "Metrics" 
+            })
+            .promise();
+
+        if (!dynamoResult.Item) {
+            console.warn(`No metrics found for package with ID: ${id}`);
+            return {
+                statusCode: 404,
+                body: JSON.stringify({ error: "Package does not exist." }),
+            };
+        }
+
+        const metrics = dynamoResult.Item.Metrics;
+        console.log("Retrieved metrics:", metrics);
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ PackageRating: metrics }),
+        };
+    } catch (error) {
+        console.error(`Error fetching metrics for package with ID ${id}:`, error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                error: "Failed to fetch metrics",
+                details: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}
