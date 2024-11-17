@@ -231,7 +231,10 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
             .get({
                 TableName: TABLE_NAME,
                 Key: { ECEfoursixone: id },
-                ProjectionExpression: "Metrics" 
+                ProjectionExpression: "#metrics",
+                ExpressionAttributeNames: {
+                    "#metrics": "Metrics"
+                }
             })
             .promise();
 
@@ -239,7 +242,7 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
             console.warn(`No metrics found for package with ID: ${id}`);
             return {
                 statusCode: 404,
-                body: JSON.stringify({ error: "Package does not exist." }),
+                body: JSON.stringify({ error: "Metrics not found for this package" }),
             };
         }
 
@@ -248,7 +251,7 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ PackageRating: metrics }),
+            body: JSON.stringify({ Metrics: metrics }),
         };
     } catch (error) {
         console.error(`Error fetching metrics for package with ID ${id}:`, error);
