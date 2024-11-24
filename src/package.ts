@@ -1,13 +1,5 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import {
-    NewPackageRequestBody,
-    Package,
-    PackageID,
-    PackageRequestBody,
-    RepoDataResult,
-    PackageMetadata, 
-    PackageData,
-} from "../types.js";
+import { RepoDataResult } from "../types.js";
 import {
     performDebloat,
     uploadToS3,
@@ -18,7 +10,6 @@ import {
     extractVersionFromPackageJson,
     fetchPackageById,
 } from "./util/packageUtils.js";
-import { BUCKET_NAME, s3 } from "../index.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
 import AWS from 'aws-sdk';

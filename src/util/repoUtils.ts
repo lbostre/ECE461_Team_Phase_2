@@ -1,14 +1,9 @@
-import AdmZip from 'adm-zip';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import git from "isomorphic-git";
 import http from 'isomorphic-git/http/node/index.js';
-
-const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -1,18 +1,12 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { minify } from "terser";
 import { BUCKET_NAME, s3 } from "../../index.js";
-import { Package, PackageData, PackageMetadata } from "../../types.js";
+import { Package, PackageData } from "../../types.js";
 import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import AWS from 'aws-sdk';
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = 'ECE461_Database';
-
-export const generateUniqueId = (): string => {
-    // Use a UUID library or custom logic to generate a unique ID
-    return uuidv4();
-};
 
 // create result
 export const createPackageService = async (
@@ -26,15 +20,6 @@ export const createPackageService = async (
     };
     return newPackage;
 };
-
-export function uuidv4(): string {
-    // Generate a random UUID v4
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0,
-            v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-    });
-}
 
 // Function to upload content to S3
 export const uploadToS3 = async (
@@ -313,15 +298,3 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
         return null;
     }
 }
-
-// // Example usage for S3 download and save
-// (async () => {
-//     const fileName = "example.zip"; // Replace with your file name
-//     const localPath = `./downloads/${fileName}`; // Local path where you want to save the file
-
-//     try {
-//         await downloadAndSaveFromS3(fileName, localPath);
-//     } catch (error) {
-//         console.error(`Failed to download file: ${error.message}`);
-//     }
-// })();
