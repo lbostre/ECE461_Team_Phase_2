@@ -1,0 +1,1 @@
+// Test /package/{id}/rate (GET) endpoint

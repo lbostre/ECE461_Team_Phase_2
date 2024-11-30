@@ -1,0 +1,1 @@
+// Test /authenticate (PUT) endpoint

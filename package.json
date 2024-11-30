@@ -28,6 +28,7 @@
         "adm-zip": "^0.5.16",
         "aws-lambda": "^1.0.7",
         "aws-sdk": "^2.1691.0",
+        "axios-mock-adapter": "^2.1.0",
         "eslint": "^9.12.0",
         "isomorphic-git": "^1.27.1",
         "terser": "^5.36.0",

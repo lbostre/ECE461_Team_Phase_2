@@ -29,6 +29,27 @@ export const handler = async (
         }
     }
 
+    // --- 501 Not Implemented --- //
+
+    // Handle /packages (POST)
+    if (path === "/packages" && httpMethod === "POST") {
+        // Return not implemented for now
+        return {
+            statusCode: 501,
+            body: JSON.stringify({ error: "Not Implemented" }),
+        };
+    }
+
+    // Handle /reset (DELETE)
+    if (path === "/reset" && httpMethod === "DELETE") {
+        // Return not implemented for now
+        return {
+            statusCode: 501,
+            body: JSON.stringify({ error: "Not Implemented" }),
+        };
+    }
+
+
     return {
         statusCode: 404,
         body: JSON.stringify({ error: "Not Found" }),
