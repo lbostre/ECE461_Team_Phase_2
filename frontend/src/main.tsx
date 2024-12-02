@@ -5,19 +5,26 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Root from "./routes/root.tsx";
 import Upload from "./routes/upload.tsx";
 import Package from "./routes/package.tsx";
+import Layout from "./components/Layout.tsx";
 
 const router = createBrowserRouter([
     {
         path: "/",
-        element: <Root />,
-    },
-    {
-        path: "/upload",
-        element: <Upload />,
-    },
-    {
-        path: "/package/:name",
-        element: <Package />,
+        element: <Layout />, // Use Layout here
+        children: [
+            {
+                path: "/",
+                element: <Root />,
+            },
+            {
+                path: "/upload",
+                element: <Upload />,
+            },
+            {
+                path: "/package/:name",
+                element: <Package />,
+            },
+        ],
     },
 ]);
 
