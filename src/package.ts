@@ -12,9 +12,9 @@ import {
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import AWS from "aws-sdk";
+import AWS from 'aws-sdk';
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
-const TABLE_NAME = "ECE461_Database";
+const TABLE_NAME = 'ECE461_Database';
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
@@ -30,12 +30,18 @@ export async function handlePackagePost(
     }
 
     try {
-        if (typeof body === "string") {
+        if (typeof body === 'string') {
             body = JSON.parse(body);
         }
 
         console.log("Body:", body);
-        const data = body.data;
+        const data = {
+            JSProgram: body.JSProgram,
+            URL: body.URL,
+            Content: body.Content,
+            debloat: body.debloat,
+            Name: body.Name
+        };
 
         console.log("Package data:", data);
         let name = "";
@@ -79,10 +85,9 @@ export async function handlePackagePost(
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
                             s3Url = await uploadToS3(contentToUpload, fileName);
                             url = URL;
-                            version = await extractVersionFromPackageJson(
-                                data.Content
-                            );
-                        } else {
+                            version = await extractVersionFromPackageJson(data.Content);
+                        }
+                        else {
                             return {
                                 statusCode: 424,
                                 body: JSON.stringify({
@@ -103,10 +108,7 @@ export async function handlePackagePost(
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
-                    name = `${githubURL.split("/").pop()}${version.replace(
-                        /\./g,
-                        ""
-                    )}`;
+                    name = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}`;
                     const fileName = `${name}.zip`;
                     metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
@@ -115,7 +117,8 @@ export async function handlePackagePost(
                             fileName
                         );
                         url = githubURL;
-                    } else {
+                    }
+                    else {
                         return {
                             statusCode: 424,
                             body: JSON.stringify({
@@ -150,13 +153,13 @@ export async function handlePackagePost(
             if (zipBase64 || s3Url) {
                 try {
                     const dynamoParams = {
-                        TableName: TABLE_NAME,
+                        TableName: TABLE_NAME,  
                         Item: {
                             ECEfoursixone: result.metadata.ID,
-                            Version: version,
+                            Version: version,  
                             URL: url,
                             JSProgram: data.JSProgram,
-                            Metrics: metricsResult,
+                            Metrics: metricsResult       
                         },
                     };
                     await dynamoDb.put(dynamoParams).promise();
@@ -167,10 +170,7 @@ export async function handlePackagePost(
                         statusCode: 500,
                         body: JSON.stringify({
                             error: "Failed to store metrics in DynamoDB",
-                            details:
-                                error instanceof Error
-                                    ? error.message
-                                    : String(error),
+                            details: error instanceof Error ? error.message : String(error),
                         }),
                     };
                 }
@@ -194,9 +194,7 @@ export async function handlePackagePost(
 }
 
 // Handle the GET request for the package/{id} endpoint
-export async function handlePackageGet(
-    id: string
-): Promise<APIGatewayProxyResult> {
+export async function handlePackageGet(id: string): Promise<APIGatewayProxyResult> {
     console.log(`Handling GET request for package with ID: ${id}`);
 
     const packageData = await fetchPackageById(id);
@@ -216,13 +214,9 @@ export async function handlePackageGet(
     };
 }
 
-export async function handlePackageRate(
-    id: string
-): Promise<APIGatewayProxyResult> {
+export async function handlePackageRate(id: string): Promise<APIGatewayProxyResult> {
     try {
-        console.log(
-            `Fetching metrics for package with ID: ${id} from DynamoDB`
-        );
+        console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
 
         const dynamoResult = await dynamoDb
             .get({
@@ -230,8 +224,8 @@ export async function handlePackageRate(
                 Key: { ECEfoursixone: id },
                 ProjectionExpression: "#metrics",
                 ExpressionAttributeNames: {
-                    "#metrics": "Metrics",
-                },
+                    "#metrics": "Metrics"
+                }
             })
             .promise();
 
@@ -239,9 +233,7 @@ export async function handlePackageRate(
             console.warn(`No metrics found for package with ID: ${id}`);
             return {
                 statusCode: 404,
-                body: JSON.stringify({
-                    error: "Metrics not found for this package",
-                }),
+                body: JSON.stringify({ error: "Metrics not found for this package" }),
             };
         }
 
@@ -253,10 +245,7 @@ export async function handlePackageRate(
             body: JSON.stringify({ PackageRating: metrics }),
         };
     } catch (error) {
-        console.error(
-            `Error fetching metrics for package with ID ${id}:`,
-            error
-        );
+        console.error(`Error fetching metrics for package with ID ${id}:`, error);
         return {
             statusCode: 500,
             body: JSON.stringify({
