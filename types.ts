@@ -44,3 +44,13 @@ export interface RepoDataResult {
     NetScore: number;              // Overall score
     NetScore_Latency: number;      // Latency time for score calculation
 }
+
+export interface AuthenticationRequest {
+    User: {
+        name: string;
+        isAdmin: boolean;
+    };
+    Secret: {
+        password: string;
+    };
+}
