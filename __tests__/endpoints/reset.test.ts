@@ -1,3 +1,5 @@
+// Test /reset (DELETE) endpoint
+
 import { describe, it, expect } from 'vitest';
 import { handler } from '../../index';
 import { APIGatewayProxyEvent, Context } from 'aws-lambda';

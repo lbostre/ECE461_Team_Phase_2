@@ -1,3 +1,5 @@
+// Test /packages (POST) endpoint
+
 import { describe, it, expect } from 'vitest';
 import { handler } from '../../index';
 import { APIGatewayProxyEvent } from 'aws-lambda';
