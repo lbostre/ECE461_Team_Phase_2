@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -43,11 +44,20 @@ export function UploadFormURL() {
         },
     });
 
-    // 2. Define a submit handler.
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        // Do something with the form values.
-        // ✅ This will be type-safe and validated.
-        console.log(values);
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        console.log(import.meta.env.VITE_API_URL + "/package");
+        const response = await axios.post(
+            // `${import.meta.env.VITE_API_URL}/package`,
+            "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package",
+            values,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Authorization": "test",
+                },
+            }
+        );
+        console.log(response);
     }
 
     return (
