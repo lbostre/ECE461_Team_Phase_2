@@ -90,8 +90,9 @@ export async function registerUser(
     newUser: { name: string; password: string; isAdmin: boolean; permissions: string[]; group: string }
 ): Promise<APIGatewayProxyResult> {
     try {
-        const decoded = jwt.verify(authToken, JWT_SECRET) as jwt.JwtPayload;
-
+        const token = authToken.replace("bearer ", "").trim();
+        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+        
         if (!decoded || !decoded.isAdmin) {
             return {
                 statusCode: 403,
@@ -119,7 +120,7 @@ export async function registerUser(
             statusCode: 201,
             body: JSON.stringify({
                 message: "User registered successfully.",
-                token: `bearer ${authToken}`,
+                token: `bearer ${token}`,
             }),
         };
     } catch (error) {
