@@ -167,7 +167,8 @@ export async function validateToken(authToken: string): Promise<boolean> {
 
 // Function to delete user account
 export async function deleteUser(authToken: string, username: string): Promise<APIGatewayProxyResult> {
-    const decoded = jwt.verify(authToken, JWT_SECRET) as jwt.JwtPayload;
+    const token = authToken.replace("bearer ", "").trim();
+    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
     if (!decoded || (decoded.name !== username && !decoded.isAdmin)) {
         return {
