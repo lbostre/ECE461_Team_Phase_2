@@ -71,6 +71,13 @@ export const handler = async (
                 body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
             };
         }
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            };
+        }
         const newUser = body ? JSON.parse(body) : null;
         return registerUser(authToken, newUser);
     }
@@ -79,6 +86,13 @@ export const handler = async (
     if (pathParameters?.id && path === `/users/${pathParameters.id}` && httpMethod === "DELETE") {
         const authToken = headers["X-Authorization"] || headers["x-authorization"];
         if (!authToken) {
+            return {
+                statusCode: 403,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            };
+        }
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
             return {
                 statusCode: 403,
                 body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),

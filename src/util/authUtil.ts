@@ -99,13 +99,6 @@ export async function registerUser(
             };
         }
 
-        // Generate a JWT token for the new user
-        const userAuthToken = jwt.sign(
-            { name: newUser.name, isAdmin: newUser.isAdmin },
-            JWT_SECRET,
-            { expiresIn: "10h" }
-        );
-
         // Store the new user details in DynamoDB
         await dynamoDb
             .put({
@@ -116,7 +109,6 @@ export async function registerUser(
                     isAdmin: newUser.isAdmin,
                     permissions: newUser.permissions,
                     group: newUser.group,
-                    authToken: userAuthToken,
                     callCount: 0,
                     expiresAt: Math.floor(Date.now() / 1000) + 10 * 60 * 60, // 10 hours in seconds
                 },
@@ -127,7 +119,7 @@ export async function registerUser(
             statusCode: 201,
             body: JSON.stringify({
                 message: "User registered successfully.",
-                token: `bearer ${userAuthToken}`,
+                token: `bearer ${authToken}`,
             }),
         };
     } catch (error) {
