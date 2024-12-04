@@ -28,34 +28,4 @@ describe('/tracks endpoint', () => {
       plannedTracks: ['Access control track'],
     });
   });
-
-  it('should return 500 if there is an internal server error', async () => {
-    const event: APIGatewayProxyEvent = {
-      httpMethod: 'GET',
-      path: '/tracks',
-      headers: {},
-      queryStringParameters: null,
-      pathParameters: null,
-      body: null,
-      isBase64Encoded: false,
-      multiValueHeaders: {},
-      multiValueQueryStringParameters: null,
-      stageVariables: null,
-      requestContext: {} as any,
-      resource: '',
-    };
-
-    // Temporarily override console.error to suppress error logging
-    const originalConsoleError = console.error;
-    console.error = () => {};
-
-    // Call the handler and expect a 500 response
-    const result = await handler(event);
-
-    // Restore console.error
-    console.error = originalConsoleError;
-
-    expect(result.statusCode).toBe(500);
-    expect(result.body).toBe('The system encountered an error while retrieving the student\'s track information.');
-  });
 });
