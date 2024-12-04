@@ -17,7 +17,7 @@ export const createPackageService = async (
     version: string
 ) => {
     const newPackage = {
-        metadata: { Name: name.replace(/\d+$/, ''), Version: version, ID: `${name.toLowerCase()}` },
+        metadata: { Name: name.replace(/\d+$/, ''), Version: version, ID: `${name.toLowerCase()}${version.replace(/\./g, "")}` },
         data: { ...data },
     };
     return newPackage;
@@ -301,28 +301,70 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
     }
 }
 
-export async function fetchRepositorySize(repoUrl: string): Promise<number> {
-    const apiUrl = repoUrl.replace('github.com', 'api.github.com/repos');
-    const response = await axios.get(apiUrl, {
-        headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
-    });
-    return response.data.size / 1024; // Convert KB to MB
+function normalizeRepositoryUrl(url: string): string {
+    if (url.startsWith("ssh://") || url.startsWith("git+ssh://")) {
+        return url.replace(/^git\+ssh:\/\/|^ssh:\/\//, "https://").replace("git@", "").replace(":", "/");
+    }
+
+    if (url.startsWith("git+https://")) {
+        return url.replace(/^git\+/, "");
+    }
+
+    if (url.startsWith("git://")) {
+        return url.replace(/^git:\/\//, "https://");
+    }
+
+    if (/^git@github\.com:.+?\.git$/.test(url)) {
+        return url.replace(/^git@/, "https://").replace(":", "/").replace(/\.git$/, "");
+    }
+
+    if (url.startsWith("https://")) {
+        return url;
+    }
+
+    throw new Error(`Unsupported URL format: ${url}`);
 }
 
-// Fetch dependencies from NPM
-export async function fetchDependencies(repoUrl: string): Promise<{ [key: string]: string }> {
-    const packageJsonUrl = `${repoUrl.replace("github.com", "raw.githubusercontent.com")}/master/package.json`;
+export async function fetchRepositorySize(repoUrl: string): Promise<number> {
     try {
-        const response = await axios.get(packageJsonUrl);
-        const dependencies = response.data.dependencies || {};
-        const devDependencies = response.data.devDependencies || {};
-        return { ...dependencies, ...devDependencies };
+        // Normalize the URL to ensure it's in https:// format
+        const normalizedUrl = normalizeRepositoryUrl(repoUrl);
+
+        const apiUrl = normalizedUrl.replace("github.com", "api.github.com/repos");
+        const response = await axios.get(apiUrl, {
+            headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
+        });
+
+        return response.data.size / 1024; // Convert KB to MB
     } catch (error) {
-        console.error("Error fetching dependencies:", error);
-        return {};
+        console.error("Error fetching repository size:", error);
+        throw error;
     }
 }
+// Fetch dependencies from NPM
+export async function fetchDependencies(repoUrl: string): Promise<{ [key: string]: string }> {
+    try {
+        const packageJsonUrl = `${normalizeRepositoryUrl(repoUrl).replace(
+            "github.com",
+            "raw.githubusercontent.com"
+        )}/master/package.json`;
 
+        const response = await axios.get(packageJsonUrl);
+        const dependencies = response.data.dependencies || {};
+
+        // Normalize dependency URLs
+        for (const [dep, version] of Object.entries(dependencies)) {
+            if (typeof version === "string" && (version.startsWith("ssh://") || version.startsWith("git"))) {
+                dependencies[dep] = normalizeRepositoryUrl(version);
+            }
+        }
+
+        return dependencies;
+    } catch (error) {
+        console.error("Error fetching dependencies:", error);
+        throw error;
+    }
+}
 // Recursively calculate total size
 export async function calculateTotalCost(
     repoUrl: string,
