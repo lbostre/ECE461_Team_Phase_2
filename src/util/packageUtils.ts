@@ -301,6 +301,10 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
 
 const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
 
+import axios from 'axios';
+
+const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
+
 export async function fetchCostWithGraphQL(
     repoUrl: string,
     includeDependencies: boolean
@@ -309,24 +313,29 @@ export async function fetchCostWithGraphQL(
     totalCost: number;
     dependencies: Record<string, { standaloneCost: number; totalCost: number }>;
 }> {
+    console.log("Starting fetchCostWithGraphQL...");
+
+    // Extract owner and repo from repoUrl
     const repoNameMatch = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
     if (!repoNameMatch) {
+        console.error("Invalid GitHub repository URL:", repoUrl);
         throw new Error("Invalid GitHub repository URL.");
     }
     const [, owner, repo] = repoNameMatch;
-    // GraphQL query to fetch repository size and runtime dependencies
+
+    console.log("Extracted owner:", owner, "repo:", repo);
+
+    // Define the GraphQL query
     const query = `
     query ($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
         diskUsage
         dependencyGraphManifests(first: 100) {
           nodes {
-            filename
             dependencies(first: 100) {
               nodes {
                 packageName
-                version
-                scope # This is critical to identify devDependencies vs runtime
+                requirements
                 repository {
                   nameWithOwner
                   diskUsage
@@ -337,67 +346,80 @@ export async function fetchCostWithGraphQL(
         }
       }
     }`;
-    const variables = {
-        owner,
-        repo,
-    };
+
+    const variables = { owner, repo };
+    console.log("Constructed GraphQL query and variables:", { query, variables });
+
     const headers = {
         Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
         "Content-Type": "application/json",
     };
+
     try {
+        // Send the request to GitHub GraphQL API
+        console.log("Sending request to GitHub GraphQL API...");
         const response = await axios.post(
             GITHUB_GRAPHQL_URL,
             { query, variables },
             { headers }
         );
-        const repoData = response.data.data.repository;
-        const standaloneCost = repoData.diskUsage / 1024; // Convert KB to MB
 
-        if (!includeDependencies) {
-            return {
-                standaloneCost,
-                totalCost: standaloneCost,
-                dependencies: {},
-            };
+        console.log("GraphQL API Response received:", JSON.stringify(response.data, null, 2));
+
+        // Parse the response data
+        const repoData = response.data.data?.repository;
+        if (!repoData) {
+            console.error("Failed to fetch repository data:", response.data);
+            throw new Error("Repository data is missing in GraphQL response.");
         }
-        const dependencyCosts: Record<
-            string,
-            { standaloneCost: number; totalCost: number }
-        > = {};
-        const dependencies =
-            repoData.dependencyGraphManifests?.nodes?.flatMap(
-                (manifest: any) =>
-                    manifest.dependencies.nodes.filter(
-                        (dep: any) => dep.scope !== "dev" // Exclude devDependencies
-                    )
+
+        // Calculate standalone cost
+        const standaloneCost = repoData.diskUsage / 1024; // Convert KB to MB
+        console.log("Standalone cost calculated:", standaloneCost);
+
+        let totalCost = standaloneCost;
+        const dependencies: Record<string, { standaloneCost: number; totalCost: number }> = {};
+
+        // Process dependencies if requested
+        if (includeDependencies) {
+            const dependencyNodes = repoData.dependencyGraphManifests?.nodes?.flatMap(
+                (manifest: any) => manifest.dependencies.nodes
             ) || [];
 
-        for (const dep of dependencies) {
-            const depName = dep.packageName;
-            const depVersion = dep.version.replace(/\./g, "");
-            const depId = `${depName}${depVersion}`;
-            const depStandaloneCost =
-                dep.repository?.diskUsage / 1024 || 0; // Convert KB to MB
-            dependencyCosts[depId] = {
-                standaloneCost: depStandaloneCost,
-                totalCost: depStandaloneCost, 
-            };
+            console.log("Fetched dependencies from GraphQL response:", dependencyNodes.length);
+
+            for (const dep of dependencyNodes) {
+                const packageName = dep.packageName;
+                const version = dep.requirements.replace(/[^\d]/g, ''); // Strip non-digit characters
+                const dependencyId = `${packageName}${version}`;
+                const depRepo = dep.repository;
+
+                if (depRepo && depRepo.diskUsage) {
+                    const depStandaloneCost = depRepo.diskUsage / 1024; // Convert KB to MB
+                    dependencies[dependencyId] = {
+                        standaloneCost: depStandaloneCost,
+                        totalCost: depStandaloneCost, // Initial total cost is standalone
+                    };
+                    totalCost += depStandaloneCost;
+                    console.log(
+                        `Processed dependency: ${dependencyId}, standaloneCost: ${depStandaloneCost}, totalCost (so far): ${totalCost}`
+                    );
+                } else {
+                    console.warn(`Repository data missing for dependency: ${dependencyId}`);
+                }
+            }
         }
-        const totalCost =
-            standaloneCost +
-            Object.values(dependencyCosts).reduce(
-                (sum, dep) => sum + dep.totalCost,
-                0
-            );
+
+        console.log("Final totalCost:", totalCost);
+        console.log("Dependencies processed:", dependencies);
 
         return {
             standaloneCost,
             totalCost,
-            dependencies: dependencyCosts,
+            dependencies,
         };
     } catch (error) {
-        console.error("Error fetching cost with GraphQL:", error);
+        console.error("Error during fetchCostWithGraphQL execution:", error);
         throw error;
     }
 }
