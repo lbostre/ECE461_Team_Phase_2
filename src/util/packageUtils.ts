@@ -1,15 +1,12 @@
 import { minify } from "terser";
 import { BUCKET_NAME, s3 } from "../../index.js";
 import { Package, PackageData } from "../../types.js";
-import { getGithubUrlFromNpm } from "./repoUtils.js";
 import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import AWS from 'aws-sdk';
-import fetch from "npm-registry-fetch";
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = 'ECE461_Database';
-const COST_TABLE_NAME = "ECE461_CostTable";
 
 // create result
 export const createPackageService = async (
