@@ -361,16 +361,18 @@ export async function fetchCostWithGraphQL(
                     }))
             ) || [];
 
-        for (const dep of dependencies) {
-            if (!dep.id || dependencyCosts[dep.id]) continue; // Avoid duplicates
-
-            dependencyCosts[dep.id] = {
-                standaloneCost: dep.standaloneCost,
-                totalCost: dep.standaloneCost, // Assume no nested dependencies for now
-            };
-
-            totalCost += dep.standaloneCost;
-        }
+            for (const dep of dependencies) {
+                if (!dep.id || dependencyCosts[dep.id] ||        
+                    dep.id.startsWith("actions/") || dep.id.startsWith("github/")        
+                ) continue;
+    
+                dependencyCosts[dep.id] = {
+                    standaloneCost: dep.standaloneCost,
+                    totalCost: dep.standaloneCost, // Assume no nested dependencies for now
+                };
+    
+                totalCost += dep.standaloneCost;
+            }
     }
 
     return { standaloneCost, totalCost, dependencyCosts };
