@@ -263,19 +263,22 @@ export async function handlePackageCost(
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if cost data exists in the Cost Table
-        const existingCostData = await dynamoDb
+        const costData = await dynamoDb
             .get({
                 TableName: "ECE461_CostTable",
                 Key: { packageID: id },
             })
             .promise();
 
-        if (existingCostData.Item) {
-            // If data exists, return the costs
-            const costs = existingCostData.Item.costs;
+        if (costData.Item) {
+            const { standaloneCost, totalCost } = costData.Item;
             return {
                 statusCode: 200,
-                body: JSON.stringify(costs),
+                body: JSON.stringify({
+                    [id]: includeDependencies
+                        ? { standaloneCost, totalCost }
+                        : { standaloneCost },
+                }),
             };
         }
 
@@ -304,30 +307,46 @@ export async function handlePackageCost(
         }
 
         // Use GraphQL API to fetch size and dependencies
-        const { standaloneCost, totalCost, dependencyCosts } =
-            await fetchCostWithGraphQL(repoUrl, includeDependencies);
+        const { standaloneCost, totalCost, dependencies } = await fetchCostWithGraphQL(
+            repoUrl,
+            includeDependencies
+        );
 
-        // Prepare the complete cost data
-        const costs = {
-            [id]: { standaloneCost, totalCost },
-            ...dependencyCosts,
-        };
-
-        // Store the costs in the Cost Table
+        // Write the package's cost data to the database
         await dynamoDb
             .put({
                 TableName: "ECE461_CostTable",
                 Item: {
                     packageID: id,
-                    costs, // Save the flat costs object
+                    standaloneCost,
+                    totalCost,
                 },
             })
             .promise();
 
-        // Return the response
+        // Write dependency costs to the database
+        for (const [dependencyId, costData] of Object.entries(dependencies)) {
+            await dynamoDb
+                .put({
+                    TableName: "ECE461_CostTable",
+                    Item: {
+                        packageID: dependencyId,
+                        standaloneCost: costData.standaloneCost,
+                        totalCost: costData.totalCost,
+                    },
+                })
+                .promise();
+        }
+
+        // Construct the response
+        const response = {
+            [id]: { standaloneCost, totalCost },
+            ...dependencies,
+        };
+
         return {
             statusCode: 200,
-            body: JSON.stringify(costs), // Return the flat costs object
+            body: JSON.stringify(response),
         };
     } catch (error) {
         console.error("Error calculating package cost:", error);
