@@ -349,8 +349,11 @@ export async function fetchDependencies(repoUrl: string): Promise<{ [key: string
             "raw.githubusercontent.com"
         )}/master/package.json`;
 
+        console.log(`Fetching package.json from: ${packageJsonUrl}`);
         const response = await axios.get(packageJsonUrl);
         const dependencies = response.data.dependencies || {};
+
+        console.log(`Found dependencies:`, dependencies);
 
         // Normalize dependency URLs
         for (const [dep, version] of Object.entries(dependencies)) {
@@ -362,7 +365,7 @@ export async function fetchDependencies(repoUrl: string): Promise<{ [key: string
         return dependencies;
     } catch (error) {
         console.error("Error fetching dependencies:", error);
-        throw error;
+        return {}; // Return an empty object on failure
     }
 }
 // Recursively calculate total size
@@ -370,21 +373,31 @@ export async function calculateTotalCost(
     repoUrl: string,
     processed: Set<string> = new Set()
 ): Promise<number> {
-    if (processed.has(repoUrl)) return 0; // Prevent circular dependencies
+    if (processed.has(repoUrl)) {
+        console.log(`Skipping already processed repo: ${repoUrl}`);
+        return 0; // Prevent circular dependencies
+    }
     processed.add(repoUrl);
 
-    // Fetch standalone cost
+    console.log(`Calculating cost for repo: ${repoUrl}`);
     const standaloneCost = await fetchRepositorySize(repoUrl);
 
     // Fetch dependencies
     const dependencies = await fetchDependencies(repoUrl);
+    console.log(`Dependencies for ${repoUrl}:`, dependencies);
 
     let totalCost = standaloneCost;
 
     for (const [depName, depVersion] of Object.entries(dependencies)) {
-        const depRepoUrl = await getGithubUrlFromNpm(`https://www.npmjs.com/package/${depName}`);
-        if (depRepoUrl) {
+        try {
+            const depRepoUrl = await getGithubUrlFromNpm(`https://www.npmjs.com/package/${depName}`);
+            if (!depRepoUrl) {
+                console.warn(`Could not resolve repo URL for dependency: ${depName}`);
+                continue; // Skip unresolved dependencies
+            }
+
             const dependencyId = `${depName}${depVersion.replace(/\./g, "")}`; // Construct dependency packageID
+            console.log(`Processing dependency: ${depName}, ID: ${dependencyId}, Repo URL: ${depRepoUrl}`);
 
             // Check if the dependency cost is already in the Cost Table
             const existingCost = await dynamoDb
@@ -395,24 +408,30 @@ export async function calculateTotalCost(
                 .promise();
 
             if (existingCost.Item) {
+                console.log(`Found existing cost for dependency ${depName}:`, existingCost.Item.totalCost);
                 totalCost += existingCost.Item.totalCost;
             } else {
                 // Calculate the dependency cost if not found
+                console.log(`Calculating cost for dependency: ${dependencyId}`);
                 const dependencyCost = await calculateTotalCost(depRepoUrl, processed);
                 totalCost += dependencyCost;
 
                 // Store the dependency cost in the Cost Table
+                const dependencyStandaloneCost = await fetchRepositorySize(depRepoUrl);
+                console.log(`Storing cost for dependency ${dependencyId}: standaloneCost=${dependencyStandaloneCost}, totalCost=${dependencyCost}`);
                 await dynamoDb
                     .put({
                         TableName: "ECE461_CostTable",
                         Item: {
                             packageID: dependencyId,
-                            standaloneCost: await fetchRepositorySize(depRepoUrl),
+                            standaloneCost: dependencyStandaloneCost,
                             totalCost: dependencyCost,
                         },
                     })
                     .promise();
             }
+        } catch (error) {
+            console.error(`Error processing dependency ${depName}:`, error);
         }
     }
 
