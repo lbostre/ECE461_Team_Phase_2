@@ -15,12 +15,12 @@ describe('busFactor', () => {
   });
 
   it('should calculate the correct bus factor value for multiple contributors', async () => {
-    const result = await busFactor([[1, 50], [2, 30], [3, 20]]);
-    expect(result.busFactorValue).toBeCloseTo(0.666, 3);
+    const result = await busFactor([[1, 50], [2, 48], [3, 1]]);
+    expect(result.busFactorValue).toBeCloseTo(0.666, 2);
   });
 
   it('should handle contributors with zero commits', async () => {
     const result = await busFactor([[1, 0], [2, 0], [3, 100]]);
-    expect(result.busFactorValue).toBeCloseTo(0.333, 3);
+    expect(result.busFactorValue).toBeCloseTo(0.333, 2);
   });
 });

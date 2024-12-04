@@ -9,9 +9,13 @@ export async function busFactor(uniqueContributors: any[]) {
 
   for (const [, commits] of uniqueContributors) {
     cumulativeCommits += commits;
+    if (cumulativeCommits >= totalCommits * ACCUMULATION) {
+      cumulativeContributors++;
+      break;
+    }
     cumulativeContributors++;
-    if (cumulativeCommits >= totalCommits * ACCUMULATION) break;
   }
 
-  return { busFactorValue: cumulativeContributors / totalContributors, busFactorEnd: Date.now() };
+  if (cumulativeContributors === 0) return { busFactorValue: 0, busFactorEnd: Date.now() };
+  else return { busFactorValue: cumulativeContributors / totalContributors, busFactorEnd: Date.now() };
 }
