@@ -9,8 +9,7 @@ import {
     extractPackageJsonUrl,
     extractVersionFromPackageJson,
     fetchPackageById,
-    fetchRepositorySize,
-    calculateTotalCost,
+    fetchCostWithGraphQL,
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
@@ -258,7 +257,10 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
     }
 }
 
-export async function handlePackageCost(id: string, includeDependencies: boolean): Promise<APIGatewayProxyResult> {
+export async function handlePackageCost(
+    id: string,
+    includeDependencies: boolean
+): Promise<APIGatewayProxyResult> {
     try {
         // Check if cost data exists in the Cost Table
         const costData = await dynamoDb
@@ -269,7 +271,6 @@ export async function handlePackageCost(id: string, includeDependencies: boolean
             .promise();
 
         if (costData.Item) {
-            // Return existing cost data
             const { standaloneCost, totalCost } = costData.Item;
             return {
                 statusCode: 200,
@@ -301,15 +302,15 @@ export async function handlePackageCost(id: string, includeDependencies: boolean
         if (!repoUrl) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: "There is missing field(s) in the PackageID." }),
+                body: JSON.stringify({ error: "Missing repository URL." }),
             };
         }
 
-        // Calculate costs
-        const standaloneCost = await fetchRepositorySize(repoUrl);
-        const totalCost = includeDependencies
-            ? await calculateTotalCost(repoUrl)
-            : standaloneCost;
+        // Use GraphQL API to fetch size and dependencies
+        const { standaloneCost, totalCost } = await fetchCostWithGraphQL(
+            repoUrl,
+            includeDependencies
+        );
 
         // Store costs in the Cost Table
         await dynamoDb
@@ -323,7 +324,6 @@ export async function handlePackageCost(id: string, includeDependencies: boolean
             })
             .promise();
 
-        // Return calculated costs
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -336,7 +336,7 @@ export async function handlePackageCost(id: string, includeDependencies: boolean
         console.error("Error calculating package cost:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: "The package rating system choked on at least one of the metrics." }),
+            body: JSON.stringify({ error: "Error calculating package cost." }),
         };
     }
 }

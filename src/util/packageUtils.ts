@@ -6,6 +6,7 @@ import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import AWS from 'aws-sdk';
+import fetch from "npm-registry-fetch";
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = 'ECE461_Database';
 const COST_TABLE_NAME = "ECE461_CostTable";
@@ -301,139 +302,81 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
     }
 }
 
-function normalizeRepositoryUrl(url: string): string {
-    if (url.startsWith("ssh://") || url.startsWith("git+ssh://")) {
-        return url.replace(/^git\+ssh:\/\/|^ssh:\/\//, "https://").replace("git@", "").replace(":", "/");
+const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
+
+export async function fetchCostWithGraphQL(
+    repoUrl: string,
+    includeDependencies: boolean
+): Promise<{ standaloneCost: number; totalCost: number }> {
+    const repoNameMatch = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (!repoNameMatch) {
+        throw new Error("Invalid GitHub repository URL.");
     }
 
-    if (url.startsWith("git+https://")) {
-        return url.replace(/^git\+/, "");
-    }
+    const [, owner, repo] = repoNameMatch;
 
-    if (url.startsWith("git://")) {
-        return url.replace(/^git:\/\//, "https://");
-    }
+    // GraphQL query to fetch repository size and dependencies
+    const query = `
+    query ($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        diskUsage
+        dependencyGraphManifests(first: 100) {
+          nodes {
+            dependencies(first: 100) {
+              nodes {
+                repository {
+                  nameWithOwner
+                  diskUsage
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
 
-    if (/^git@github\.com:.+?\.git$/.test(url)) {
-        return url.replace(/^git@/, "https://").replace(":", "/").replace(/\.git$/, "");
-    }
+    const variables = {
+        owner,
+        repo,
+    };
 
-    if (url.startsWith("https://")) {
-        return url;
-    }
+    const headers = {
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        "Content-Type": "application/json",
+    };
 
-    throw new Error(`Unsupported URL format: ${url}`);
-}
-
-export async function fetchRepositorySize(repoUrl: string): Promise<number> {
     try {
-        // Normalize the URL to ensure it's in https:// format
-        const normalizedUrl = normalizeRepositoryUrl(repoUrl);
+        const response = await axios.post(
+            GITHUB_GRAPHQL_URL,
+            { query, variables },
+            { headers }
+        );
 
-        const apiUrl = normalizedUrl.replace("github.com", "api.github.com/repos");
-        const response = await axios.get(apiUrl, {
-            headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
-        });
+        const repoData = response.data.data.repository;
 
-        return response.data.size / 1024; // Convert KB to MB
+        const standaloneCost = repoData.diskUsage / 1024; // Convert KB to MB
+
+        if (!includeDependencies) {
+            return { standaloneCost, totalCost: standaloneCost };
+        }
+
+        // Calculate the total cost by adding dependency sizes
+        let totalCost = standaloneCost;
+        const dependencies =
+            repoData.dependencyGraphManifests?.nodes?.flatMap(
+                (manifest: any) =>
+                    manifest.dependencies.nodes.map((dep: any) => dep.repository)
+            ) || [];
+
+        for (const dep of dependencies) {
+            if (dep && dep.diskUsage) {
+                totalCost += dep.diskUsage / 1024; // Convert KB to MB
+            }
+        }
+
+        return { standaloneCost, totalCost };
     } catch (error) {
-        console.error("Error fetching repository size:", error);
+        console.error("Error fetching cost with GraphQL:", error);
         throw error;
     }
-}
-// Fetch dependencies from NPM
-export async function fetchDependencies(repoUrl: string): Promise<{ [key: string]: string }> {
-    try {
-        const packageJsonUrl = `${normalizeRepositoryUrl(repoUrl).replace(
-            "github.com",
-            "raw.githubusercontent.com"
-        )}/master/package.json`;
-
-        console.log(`Fetching package.json from: ${packageJsonUrl}`);
-        const response = await axios.get(packageJsonUrl);
-        const dependencies = response.data.dependencies || {};
-
-        console.log(`Found dependencies:`, dependencies);
-
-        // Normalize dependency URLs
-        for (const [dep, version] of Object.entries(dependencies)) {
-            if (typeof version === "string" && (version.startsWith("ssh://") || version.startsWith("git"))) {
-                dependencies[dep] = normalizeRepositoryUrl(version);
-            }
-        }
-
-        return dependencies;
-    } catch (error) {
-        console.error("Error fetching dependencies:", error);
-        return {}; // Return an empty object on failure
-    }
-}
-// Recursively calculate total size
-export async function calculateTotalCost(
-    repoUrl: string,
-    processed: Set<string> = new Set()
-): Promise<number> {
-    if (processed.has(repoUrl)) {
-        console.log(`Skipping already processed repo: ${repoUrl}`);
-        return 0; // Prevent circular dependencies
-    }
-    processed.add(repoUrl);
-
-    console.log(`Calculating cost for repo: ${repoUrl}`);
-    const standaloneCost = await fetchRepositorySize(repoUrl);
-
-    // Fetch dependencies
-    const dependencies = await fetchDependencies(repoUrl);
-    console.log(`Dependencies for ${repoUrl}:`, dependencies);
-
-    let totalCost = standaloneCost;
-
-    for (const [depName, depVersion] of Object.entries(dependencies)) {
-        try {
-            const depRepoUrl = await getGithubUrlFromNpm(`https://www.npmjs.com/package/${depName}`);
-            if (!depRepoUrl) {
-                console.warn(`Could not resolve repo URL for dependency: ${depName}`);
-                continue; // Skip unresolved dependencies
-            }
-
-            const dependencyId = `${depName}${depVersion.replace(/\./g, "")}`; // Construct dependency packageID
-            console.log(`Processing dependency: ${depName}, ID: ${dependencyId}, Repo URL: ${depRepoUrl}`);
-
-            // Check if the dependency cost is already in the Cost Table
-            const existingCost = await dynamoDb
-                .get({
-                    TableName: "ECE461_CostTable",
-                    Key: { packageID: dependencyId },
-                })
-                .promise();
-
-            if (existingCost.Item) {
-                console.log(`Found existing cost for dependency ${depName}:`, existingCost.Item.totalCost);
-                totalCost += existingCost.Item.totalCost;
-            } else {
-                // Calculate the dependency cost if not found
-                console.log(`Calculating cost for dependency: ${dependencyId}`);
-                const dependencyCost = await calculateTotalCost(depRepoUrl, processed);
-                totalCost += dependencyCost;
-
-                // Store the dependency cost in the Cost Table
-                const dependencyStandaloneCost = await fetchRepositorySize(depRepoUrl);
-                console.log(`Storing cost for dependency ${dependencyId}: standaloneCost=${dependencyStandaloneCost}, totalCost=${dependencyCost}`);
-                await dynamoDb
-                    .put({
-                        TableName: "ECE461_CostTable",
-                        Item: {
-                            packageID: dependencyId,
-                            standaloneCost: dependencyStandaloneCost,
-                            totalCost: dependencyCost,
-                        },
-                    })
-                    .promise();
-            }
-        } catch (error) {
-            console.error(`Error processing dependency ${depName}:`, error);
-        }
-    }
-
-    return totalCost;
 }
