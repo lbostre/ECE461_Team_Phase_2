@@ -5,7 +5,8 @@
   "description": "test",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx tsc",
+    "test": "vitest --config ./vitest.config.ts run --coverage"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +15,7 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.7.5",
     "@types/uuid": "^10.0.0",
+    "@vitest/coverage-istanbul": "^2.1.8",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "fs": "^0.0.1-security",
