@@ -1,12 +1,14 @@
 import { minify } from "terser";
 import { BUCKET_NAME, s3 } from "../../index.js";
 import { Package, PackageData } from "../../types.js";
+import { getGithubUrlFromNpm } from "./repoUtils.js";
 import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import AWS from 'aws-sdk';
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = 'ECE461_Database';
+const COST_TABLE_NAME = "ECE461_CostTable";
 
 // create result
 export const createPackageService = async (
@@ -297,4 +299,80 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
         console.error(`Error fetching package with ID ${id}:`, error);
         return null;
     }
+}
+
+export async function fetchRepositorySize(repoUrl: string): Promise<number> {
+    const apiUrl = repoUrl.replace('github.com', 'api.github.com/repos');
+    const response = await axios.get(apiUrl, {
+        headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
+    });
+    return response.data.size / 1024; // Convert KB to MB
+}
+
+// Fetch dependencies from NPM
+export async function fetchDependencies(repoUrl: string): Promise<{ [key: string]: string }> {
+    const packageJsonUrl = `${repoUrl.replace("github.com", "raw.githubusercontent.com")}/master/package.json`;
+    try {
+        const response = await axios.get(packageJsonUrl);
+        const dependencies = response.data.dependencies || {};
+        const devDependencies = response.data.devDependencies || {};
+        return { ...dependencies, ...devDependencies };
+    } catch (error) {
+        console.error("Error fetching dependencies:", error);
+        return {};
+    }
+}
+
+// Recursively calculate total size
+export async function calculateTotalCost(
+    repoUrl: string,
+    processed: Set<string> = new Set()
+): Promise<number> {
+    if (processed.has(repoUrl)) return 0; // Prevent circular dependencies
+    processed.add(repoUrl);
+
+    // Fetch standalone cost
+    const standaloneCost = await fetchRepositorySize(repoUrl);
+
+    // Fetch dependencies
+    const dependencies = await fetchDependencies(repoUrl);
+
+    let totalCost = standaloneCost;
+
+    for (const [depName, depVersion] of Object.entries(dependencies)) {
+        const depRepoUrl = await getGithubUrlFromNpm(`https://www.npmjs.com/package/${depName}`);
+        if (depRepoUrl) {
+            const dependencyId = `${depName}${depVersion.replace(/\./g, "")}`; // Construct dependency packageID
+
+            // Check if the dependency cost is already in the Cost Table
+            const existingCost = await dynamoDb
+                .get({
+                    TableName: "ECE461_CostTable",
+                    Key: { packageID: dependencyId },
+                })
+                .promise();
+
+            if (existingCost.Item) {
+                totalCost += existingCost.Item.totalCost;
+            } else {
+                // Calculate the dependency cost if not found
+                const dependencyCost = await calculateTotalCost(depRepoUrl, processed);
+                totalCost += dependencyCost;
+
+                // Store the dependency cost in the Cost Table
+                await dynamoDb
+                    .put({
+                        TableName: "ECE461_CostTable",
+                        Item: {
+                            packageID: dependencyId,
+                            standaloneCost: await fetchRepositorySize(depRepoUrl),
+                            totalCost: dependencyCost,
+                        },
+                    })
+                    .promise();
+            }
+        }
+    }
+
+    return totalCost;
 }

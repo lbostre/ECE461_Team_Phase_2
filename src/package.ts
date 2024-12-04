@@ -9,6 +9,8 @@ import {
     extractPackageJsonUrl,
     extractVersionFromPackageJson,
     fetchPackageById,
+    fetchRepositorySize,
+    calculateTotalCost,
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
@@ -78,8 +80,8 @@ export async function handlePackagePost(
                 if (data.Content) {
                     const URL = await extractPackageJsonUrl(data.Content);
                     version = await extractVersionFromPackageJson(data.Content);
-                    name = `${data.Name}${version.replace(/\./g, "")}`;
-                    const fileName = `${name}.zip`;
+                    name = `${data.Name}`;
+                    const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
                     if (URL != null) {
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
@@ -108,8 +110,8 @@ export async function handlePackagePost(
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
-                    name = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}`;
-                    const fileName = `${name}.zip`;
+                    name = `${githubURL.split("/").pop()}`;
+                    const fileName = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}.zip`;
                     metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
                         zipBase64 = await uploadGithubRepoAsZipToS3(
@@ -252,6 +254,89 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
                 error: "Failed to fetch metrics",
                 details: error instanceof Error ? error.message : String(error),
             }),
+        };
+    }
+}
+
+export async function handlePackageCost(id: string, includeDependencies: boolean): Promise<APIGatewayProxyResult> {
+    try {
+        // Check if cost data exists in the Cost Table
+        const costData = await dynamoDb
+            .get({
+                TableName: "ECE461_CostTable",
+                Key: { packageID: id },
+            })
+            .promise();
+
+        if (costData.Item) {
+            // Return existing cost data
+            const { standaloneCost, totalCost } = costData.Item;
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    [id]: includeDependencies
+                        ? { standaloneCost, totalCost }
+                        : { standaloneCost },
+                }),
+            };
+        }
+
+        // Fetch package data from the main table
+        const packageData = await dynamoDb
+            .get({
+                TableName: "ECE461_Database",
+                Key: { ECEfoursixone: id },
+            })
+            .promise();
+
+        if (!packageData.Item) {
+            return {
+                statusCode: 404,
+                body: JSON.stringify({ error: "Package does not exist." }),
+            };
+        }
+
+        const repoUrl = packageData.Item.URL;
+
+        if (!repoUrl) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: "There is missing field(s) in the PackageID." }),
+            };
+        }
+
+        // Calculate costs
+        const standaloneCost = await fetchRepositorySize(repoUrl);
+        const totalCost = includeDependencies
+            ? await calculateTotalCost(repoUrl)
+            : standaloneCost;
+
+        // Store costs in the Cost Table
+        await dynamoDb
+            .put({
+                TableName: "ECE461_CostTable",
+                Item: {
+                    packageID: id,
+                    standaloneCost,
+                    totalCost,
+                },
+            })
+            .promise();
+
+        // Return calculated costs
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                [id]: includeDependencies
+                    ? { standaloneCost, totalCost }
+                    : { standaloneCost },
+            }),
+        };
+    } catch (error) {
+        console.error("Error calculating package cost:", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "The package rating system choked on at least one of the metrics." }),
         };
     }
 }

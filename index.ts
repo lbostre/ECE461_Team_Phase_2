@@ -3,6 +3,7 @@ import AWS from "aws-sdk";
 import { handlePackagePost, 
          handlePackageGet, 
          handlePackageRate,
+         handlePackageCost,
        } from "./src/package.js";
 import { validateToken, handleAuthenticate, registerUser, deleteUser } from "./src/util/authUtil.js";
 // Initialize S3 client
@@ -59,6 +60,10 @@ export const handler = async (
         // /package/{id}
         else if (path === `/package/${id}`) {  
             return handlePackageGet(id);
+        }
+        // /package/{id}/cost
+        else if (path === `/package/${id}/cost`) {
+            return handlePackageCost(id, event.queryStringParameters?.dependency === "true");
         }
     }
 
