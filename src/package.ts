@@ -263,22 +263,19 @@ export async function handlePackageCost(
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if cost data exists in the Cost Table
-        const costData = await dynamoDb
+        const existingCostData = await dynamoDb
             .get({
                 TableName: "ECE461_CostTable",
                 Key: { packageID: id },
             })
             .promise();
 
-        if (costData.Item) {
-            const { standaloneCost, totalCost } = costData.Item;
+        if (existingCostData.Item) {
+            // If data exists, return the costs
+            const costs = existingCostData.Item.costs;
             return {
                 statusCode: 200,
-                body: JSON.stringify({
-                    [id]: includeDependencies
-                        ? { standaloneCost, totalCost }
-                        : { standaloneCost },
-                }),
+                body: JSON.stringify(costs),
             };
         }
 
@@ -307,30 +304,30 @@ export async function handlePackageCost(
         }
 
         // Use GraphQL API to fetch size and dependencies
-        const { standaloneCost, totalCost } = await fetchCostWithGraphQL(
-            repoUrl,
-            includeDependencies
-        );
+        const { standaloneCost, totalCost, dependencyCosts } =
+            await fetchCostWithGraphQL(repoUrl, includeDependencies);
 
-        // Store costs in the Cost Table
+        // Prepare the complete cost data
+        const costs = {
+            [id]: { standaloneCost, totalCost },
+            ...dependencyCosts,
+        };
+
+        // Store the costs in the Cost Table
         await dynamoDb
             .put({
                 TableName: "ECE461_CostTable",
                 Item: {
                     packageID: id,
-                    standaloneCost,
-                    totalCost,
+                    costs, // Save the flat costs object
                 },
             })
             .promise();
 
+        // Return the response
         return {
             statusCode: 200,
-            body: JSON.stringify({
-                [id]: includeDependencies
-                    ? { standaloneCost, totalCost }
-                    : { standaloneCost },
-            }),
+            body: JSON.stringify(costs), // Return the flat costs object
         };
     } catch (error) {
         console.error("Error calculating package cost:", error);

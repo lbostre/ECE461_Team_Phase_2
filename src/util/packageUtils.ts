@@ -307,7 +307,11 @@ const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
 export async function fetchCostWithGraphQL(
     repoUrl: string,
     includeDependencies: boolean
-): Promise<{ standaloneCost: number; totalCost: number }> {
+): Promise<{
+    standaloneCost: number;
+    totalCost: number;
+    dependencyCosts: Record<string, { standaloneCost: number; totalCost: number }>;
+}> {
     const repoNameMatch = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
     if (!repoNameMatch) {
         throw new Error("Invalid GitHub repository URL.");
@@ -315,7 +319,6 @@ export async function fetchCostWithGraphQL(
 
     const [, owner, repo] = repoNameMatch;
 
-    // GraphQL query to fetch repository size and dependencies
     const query = `
     query ($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
@@ -328,6 +331,8 @@ export async function fetchCostWithGraphQL(
                   nameWithOwner
                   diskUsage
                 }
+                packageName
+                requirements
               }
             }
           }
@@ -335,48 +340,42 @@ export async function fetchCostWithGraphQL(
       }
     }`;
 
-    const variables = {
-        owner,
-        repo,
-    };
-
+    const variables = { owner, repo };
     const headers = {
         Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
         "Content-Type": "application/json",
     };
 
-    try {
-        const response = await axios.post(
-            GITHUB_GRAPHQL_URL,
-            { query, variables },
-            { headers }
-        );
+    const response = await axios.post(GITHUB_GRAPHQL_URL, { query, variables }, { headers });
+    const repoData = response.data.data.repository;
 
-        const repoData = response.data.data.repository;
+    const standaloneCost = repoData.diskUsage / 1024; // Convert KB to MB
+    let totalCost = standaloneCost;
 
-        const standaloneCost = repoData.diskUsage / 1024; // Convert KB to MB
+    const dependencyCosts: Record<string, { standaloneCost: number; totalCost: number }> = {};
 
-        if (!includeDependencies) {
-            return { standaloneCost, totalCost: standaloneCost };
-        }
-
-        // Calculate the total cost by adding dependency sizes
-        let totalCost = standaloneCost;
+    if (includeDependencies) {
         const dependencies =
             repoData.dependencyGraphManifests?.nodes?.flatMap(
                 (manifest: any) =>
-                    manifest.dependencies.nodes.map((dep: any) => dep.repository)
+                    manifest.dependencies.nodes.map((dep: any) => ({
+                        id: `${dep.packageName}${dep.requirements.replace(/\./g, "")}`,
+                        standaloneCost: dep.repository?.diskUsage / 1024 || 0,
+                    }))
             ) || [];
 
         for (const dep of dependencies) {
-            if (dep && dep.diskUsage) {
-                totalCost += dep.diskUsage / 1024; // Convert KB to MB
-            }
-        }
+            if (!dep.id || dependencyCosts[dep.id]) continue; // Avoid duplicates
 
-        return { standaloneCost, totalCost };
-    } catch (error) {
-        console.error("Error fetching cost with GraphQL:", error);
-        throw error;
+            dependencyCosts[dep.id] = {
+                standaloneCost: dep.standaloneCost,
+                totalCost: dep.standaloneCost, // Assume no nested dependencies for now
+            };
+
+            totalCost += dep.standaloneCost;
+        }
     }
+
+    return { standaloneCost, totalCost, dependencyCosts };
 }
+
