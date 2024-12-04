@@ -392,9 +392,8 @@ export async function fetchCostWithGraphQL(
                 const packageName = dep.packageName;
                 const version = dep.requirements.replace(/[^\d]/g, ''); // Strip non-digit characters
                 const dependencyId = `${packageName}${version}`;
-                const depRepo = dep.repository;
-
-                if (depRepo && depRepo.diskUsage) {
+                if (dep.repository && dep.repository.diskUsage) {
+                    const depRepo = dep.repository;
                     const depStandaloneCost = depRepo.diskUsage / 1024; // Convert KB to MB
                     dependencies[dependencyId] = {
                         standaloneCost: depStandaloneCost,
