@@ -4,7 +4,7 @@ import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
-import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 const TABLE_NAME = 'ECE461_Database';
 
@@ -15,7 +15,11 @@ export const createPackageService = async (
     version: string
 ) => {
     const newPackage = {
-        metadata: { Name: name.replace(/\d+$/, ''), Version: version, ID: `${name.toLowerCase()}${version.replace(/\./g, "")}` },
+        metadata: {
+            Name: name.replace(/\d+$/, ""),
+            Version: version,
+            ID: `${name.toLowerCase()}${version.replace(/\./g, "")}`,
+        },
         data: { ...data },
     };
     return newPackage;
@@ -273,16 +277,21 @@ export async function extractVersionFromPackageJson(contentBase64: string): Prom
     return packageJson.version || "1.0.0";
 }
 
-export async function fetchPackageById(id: string, dynamoDbClient: DynamoDBClient, s3Client: S3Client, bucketName: string): Promise<Package | null> {
+export async function fetchPackageById(
+    id: string,
+    dynamoDb: DynamoDBDocumentClient,
+    s3Client: S3Client,
+    bucketName: string
+): Promise<Package | null> {
     console.log(`Fetching package metadata from DynamoDB for ID: ${id}`);
 
-    // Step 1: Fetch Version and URL from DynamoDB
     try {
-        const command = new GetItemCommand({
+        // Fetch metadata from DynamoDB
+        const command = new GetCommand({
             TableName: TABLE_NAME,
-            Key: { ECEfoursixone: { S: id } },
+            Key: { ECEfoursixone: id },
         });
-        const dynamoResult = await dynamoDbClient.send(command);
+        const dynamoResult = await dynamoDb.send(command);
 
         if (!dynamoResult.Item) {
             console.error(`No metadata found in DynamoDB for ID: ${id}`);
@@ -290,39 +299,47 @@ export async function fetchPackageById(id: string, dynamoDbClient: DynamoDBClien
         }
 
         const { Version, URL, JSProgram } = dynamoResult.Item;
-        const urlString = URL.S || "";
-        console.log(`Retrieved Version: ${Version}, URL: ${urlString} from DynamoDB for ID: ${id}`);
+        console.log(`Retrieved metadata from DynamoDB:`, {
+            Version,
+            URL,
+            JSProgram,
+        });
 
-        const name = id.replace(/\d+$/, "");
-
-        // Step 2: Fetch package content from S3
+        // Fetch package content from S3
         const params = {
             Bucket: bucketName,
-            Key: `packages/${id}.zip`
+            Key: `packages/${id}.zip`,
         };
+
+        console.log(`Fetching content from S3 for ID: ${id}`);
         const s3Command = new GetObjectCommand(params);
         const s3Data = await s3Client.send(s3Command);
+
         if (!s3Data.Body) {
             throw new Error("S3 object body is undefined");
         }
-        const content = await streamToBuffer(s3Data.Body).then(buffer => buffer.toString("base64"));
 
-        // Step 3: Construct the package response
+        // Convert S3 Body to a base64 string
+        const content = await streamToBuffer(s3Data.Body).then((buffer) =>
+            buffer.toString("base64")
+        );
+
+        // Construct the package response
         const packageData: Package = {
             metadata: {
-                Name: name, // Extracts Name if ID includes Version
-                Version: Version.S || "1.0.0",
+                Name: id.replace(/\d+$/, ""), // Extract Name if ID includes Version
+                Version: Version || "1.0.0",
                 ID: id,
             },
             data: {
-                URL: URL.S || "",
-                JSProgram: JSProgram.S || "",
+                URL: URL || "",
+                JSProgram: JSProgram || "",
+                Content: content, // Add the base64 content fetched from S3
             },
         };
 
         console.log("Fetched package data:", packageData);
         return packageData;
-
     } catch (error) {
         console.error(`Error fetching package with ID ${id}:`, error);
         return null;
