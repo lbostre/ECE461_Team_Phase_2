@@ -33,7 +33,7 @@ export async function handlePackagePost(
             headers: {
                 "Access-Control-Allow-Origin": "*", // Allow all origins
                 "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
             },
             body: JSON.stringify({ error: "Request body is missing" }),
         };
@@ -62,7 +62,7 @@ export async function handlePackagePost(
                 headers: {
                     "Access-Control-Allow-Origin": "*", // Allow all origins
                     "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
                 },
                 body: JSON.stringify({
                     error: "Both Content and URL cannot be set",
@@ -113,7 +113,7 @@ export async function handlePackagePost(
                                     "Access-Control-Allow-Origin": "*", // Allow all origins
                                     "Access-Control-Allow-Methods": "POST", // Allow specific methods
                                     "Access-Control-Allow-Headers":
-                                        "X-Authorization", // Allow the custom header
+                                        "Content-Type, X-Authorization", // Allow the custom header
                                 },
                                 body: JSON.stringify({
                                     error: "Package is not uploaded due to the disqualified rating.",
@@ -151,7 +151,7 @@ export async function handlePackagePost(
                                 "Access-Control-Allow-Origin": "*", // Allow all origins
                                 "Access-Control-Allow-Methods": "POST", // Allow specific methods
                                 "Access-Control-Allow-Headers":
-                                    "X-Authorization", // Allow the custom header
+                                    "Content-Type, X-Authorization", // Allow the custom header
                             },
                             body: JSON.stringify({
                                 error: "Package is not uploaded due to the disqualified rating.",
@@ -203,7 +203,7 @@ export async function handlePackagePost(
                         headers: {
                             "Access-Control-Allow-Origin": "*", // Allow all origins
                             "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                            "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                            "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
                         },
                         body: JSON.stringify({
                             error: "Failed to store metrics in DynamoDB",
@@ -222,7 +222,7 @@ export async function handlePackagePost(
             headers: {
                 "Access-Control-Allow-Origin": "*", // Allow all origins
                 "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
             },
             body: JSON.stringify(result),
         };
@@ -233,7 +233,7 @@ export async function handlePackagePost(
             headers: {
                 "Access-Control-Allow-Origin": "*", // Allow all origins
                 "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
             },
             body: JSON.stringify({
                 error: "An error occurred while processing the request",
@@ -412,6 +412,153 @@ export async function handlePackageCost(
         return {
             statusCode: 500,
             body: JSON.stringify({ error: "Error calculating package cost." }),
+        };
+    }
+}
+
+export async function handlePackageUpdate(id: string, body: string): Promise<APIGatewayProxyResult> {
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+    };
+
+    try {
+        if (!body) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the request body.",
+                }),
+            };
+        }
+
+        const requestBody = JSON.parse(body);
+        const { metadata, data } = requestBody;
+
+        if (
+            !metadata?.ID ||
+            !metadata?.Version ||
+            !data?.Content ||
+            (!data?.URL && !data?.Content)
+        ) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageID or it is formed improperly.",
+                }),
+            };
+        }
+
+        // Extract package name (remove version number from ID)
+        const packageName = metadata.ID.replace(/[0-9.]+$/, "");
+
+        // Query the database to find all matching packages
+        const queryResult = await dynamoDb
+            .scan({
+                TableName: TABLE_NAME,
+                FilterExpression: "begins_with(ECEfoursixone, :packageName)",
+                ExpressionAttributeValues: { ":packageName": packageName },
+            })
+            .promise();
+
+        if (!queryResult.Items || queryResult.Items.length === 0) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Package does not exist." }),
+            };
+        }
+
+        // Find the latest version
+        const packages = queryResult.Items;
+        const latestPackage = packages.reduce((latest, current) => {
+            return semver.gt(current.Version, latest.Version) ? current : latest;
+        }, packages[0]);
+
+        // Validate the new version
+        if (!semver.gt(metadata.Version, latestPackage.Version)) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "The provided version is not newer than the latest version.",
+                }),
+            };
+        }
+
+        // Run debloat if applicable
+        let contentToUpload = data.Content;
+        if (data.Content && data.debloat) {
+            console.log("Debloat option is true. Debloating content...");
+            contentToUpload = await performDebloat(data.Content);
+        }
+
+        let metricsResult: RepoDataResult | null = null;
+        let s3Url: string | undefined;
+
+        // Run metrics and upload the package to S3
+        if (contentToUpload || data.URL) {
+            try {
+                const url = data.URL || (await extractPackageJsonUrl(contentToUpload));
+                const metrics = await getRepoData(url);
+
+                if (metrics && metrics.NetScore >= 0.5) {
+                    const fileName = `${packageName}${metadata.Version.replace(/\./g, "")}.zip`;
+                    s3Url = await uploadToS3(contentToUpload, fileName);
+                    metricsResult = metrics;
+                } else {
+                    return {
+                        statusCode: 424,
+                        headers: corsHeaders,
+                        body: JSON.stringify({
+                            error: "Package is not uploaded due to the disqualified rating.",
+                        }),
+                    };
+                }
+            } catch (error) {
+                console.error("Error processing metrics or uploading to S3:", error);
+                return {
+                    statusCode: 500,
+                    headers: corsHeaders,
+                    body: JSON.stringify({
+                        error: "An error occurred while running metrics or uploading to S3.",
+                    }),
+                };
+            }
+        }
+
+        // Store the new version in the database
+        const newPackage = {
+            ECEfoursixone: metadata.ID, // New unique ID for the version
+            Version: metadata.Version,
+            URL: data.URL || null,
+            JSProgram: data.JSProgram || null,
+            Metrics: metricsResult,
+        };
+
+        await dynamoDb
+            .put({
+                TableName: TABLE_NAME,
+                Item: newPackage,
+            })
+            .promise();
+
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: "Version is updated." }),
+        };
+    } catch (error) {
+        console.error("Error updating package version:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "Internal Server Error",
+            }),
         };
     }
 }

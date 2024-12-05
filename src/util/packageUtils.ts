@@ -331,7 +331,6 @@ export async function fetchPackageById(id: string, dynamoDbClient: DynamoDBClien
 
 const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
 
-
 export async function fetchCostWithGraphQL(
     repoUrl: string,
     includeDependencies: boolean

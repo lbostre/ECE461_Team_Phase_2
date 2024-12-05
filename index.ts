@@ -5,6 +5,7 @@ import {
     handlePackageGet,
     handlePackageRate,
     handlePackageCost,
+    handlePackageUpdate,
 } from "./src/package.js";
 import {
     validateToken,
@@ -39,28 +40,92 @@ export const handler = async (
 
     const { httpMethod, path, pathParameters, body, headers } = event;
 
+    if (httpMethod === "OPTIONS") {
+        return {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+            },
+            body: "",
+        };
+    }
+
     // Get Auth Token
     if (path === "/authenticate" && httpMethod === "PUT") {
-        return handleAuthenticate(body, dynamoDbDocumentClient);
+        return handleAuthenticate(body);
     }
 
-    const id = pathParameters?.id;
+    if (path === "/package" && httpMethod === "POST") {
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        return handlePackagePost(body);
+    }
 
-    // /package/{id}/rate
-    if (path === `/package/${id}/rate`) {
-        return handlePackageRate(id, dynamoDbDocumentClient);
+    // Handle GET request to /package/{id}
+    if (httpMethod === "GET" && pathParameters && pathParameters.id) {
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const id = pathParameters.id;
+        // /package/{id}/rate
+        if (path === `/package/${id}/rate`) {
+            return handlePackageRate(id);
+        }
+        // /package/{id}
+        else if (path === `/package/${id}`) {
+            return handlePackageGet(id);
+        }
+        // /package/{id}/cost
+        else if (path === `/package/${id}/cost`) {
+            return handlePackageCost(
+                id,
+                event.queryStringParameters?.dependency === "true"
+            );
+        }
     }
-    // /package/{id}
-    else if (path === `/package/${id}`) {
-        return handlePackageGet(id, dynamoDbDocumentClient);
-    }
-    // /package/{id}/cost
-    else if (path === `/package/${id}/cost`) {
-        return handlePackageCost(
-            id,
-            event.queryStringParameters?.dependency === "true",
-            dynamoDbDocumentClient
-        );
+
+    if (httpMethod === "POST" && pathParameters && pathParameters.id) {
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const id = pathParameters.id;
+        const body = event.body;
+        if (path === `/package/${id}` && body) {
+            return handlePackageUpdate(id, body);
+        }
     }
 
     // Register a User

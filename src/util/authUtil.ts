@@ -8,16 +8,20 @@ const USER_TABLE_NAME = "ECE461_UsersTable";
 const JWT_SECRET = process.env.JWT_SECRET || "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
 
 // Handle authentication requests and token creation
-export async function handleAuthenticate(
-    body: any,
-    dynamoDb: DynamoDBDocumentClient
-): Promise<APIGatewayProxyResult> {
+export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*", // Allow requests from any origin
+        "Access-Control-Allow-Methods": "OPTIONS, PUT", // Specify allowed methods
+        "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Specify allowed headers
+    };
+
     try {
         const parsedBody = body ? JSON.parse(body) : null;
 
         if (!parsedBody || !parsedBody.User || !parsedBody.Secret) {
             return {
                 statusCode: 400,
+                headers: corsHeaders,
                 body: JSON.stringify({
                     error: "There is missing field(s) in the AuthenticationRequest or it is formed improperly.",
                 }),
@@ -38,6 +42,7 @@ export async function handleAuthenticate(
         if (!userResult.Item || userResult.Item.password !== Secret.password) {
             return {
                 statusCode: 401,
+                headers: corsHeaders,
                 body: JSON.stringify({ error: "The username or password is invalid." }),
             };
         }
@@ -49,6 +54,7 @@ export async function handleAuthenticate(
             console.log("Returning existing unexpired token.");
             return {
                 statusCode: 200,
+                headers: corsHeaders,
                 body: JSON.stringify({ token: `bearer ${user.authToken}` }),
             };
         }
@@ -75,12 +81,14 @@ export async function handleAuthenticate(
 
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({ token: `bearer ${newAuthToken}` }),
         };
     } catch (error) {
         console.error("Error handling authentication:", error);
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Internal Server Error" }),
         };
     }
