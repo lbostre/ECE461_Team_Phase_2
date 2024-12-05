@@ -590,26 +590,8 @@ export const handlePackagesList = async (
 
     for (const query of packagesQuery) {
         if (query.Version && query.Name) {
-            // Validate that the "Version" is not combining multiple formats
-            const versionFormats = {
-                Exact: query.Version.includes("Exact"),
-                BoundedRange: query.Version.includes("Bounded Range"),
-                Carat: query.Version.includes("Carat"),
-                Tilde: query.Version.includes("Tilde"),
-            };
-
-            const matchedFormats = Object.values(versionFormats).filter(Boolean);
-            if (matchedFormats.length !== 1) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({
-                        error: "Invalid version format. The 'Version' field cannot be a combination of multiple version formats.",
-                    }),
-                };
-            }
-
             // Handle different version queries: Exact, Bounded Range, Carat, Tilde
-            if (versionFormats.Exact) {
+            if (query.Version.includes("Exact")) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const exactPackage = await getExactPackage(query.Name, version, dynamoDb);
@@ -617,25 +599,27 @@ export const handlePackagesList = async (
                         results.push(exactPackage);
                     }
                 }
-            } else if (versionFormats.BoundedRange) {
+            } else if (query.Version.includes("Bounded Range")) {
                 const range = query.Version.match(/\(([^)]+)\)/)?.[1]?.split("-");
                 if (range && range.length === 2) {
                     const boundedPackages = await getBoundedRangePackages(query.Name, range, dynamoDb);
                     results.push(...boundedPackages);
                 }
-            } else if (versionFormats.Carat) {
+            } else if (query.Version.includes("Carat")) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
                     results.push(...caratPackages);
                 }
-            } else if (versionFormats.Tilde) {
+            } else if (query.Version.includes("Tilde")) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
                     results.push(...tildePackages);
                 }
             }
+        } else {
+            console.warn("Missing Version or Name in the query:", query);
         }
     }
 
@@ -646,20 +630,9 @@ export const handlePackagesList = async (
         ))
     );
 
-    // Transforming the results to match the expected response structure
-    const transformedResults = results.map(item => {
-        // Extracting the name by removing the version numbers from the `ECEfoursixone` key
-        const name = item.ECEfoursixone.replace(/[0-9]/g, '');
-        return {
-            Version: item.Version,
-            Name: name,
-            ID: name.toLowerCase()
-        };
-    });
-
     // Pagination logic
     const pageSize = 10;
-    const paginatedResults = transformedResults.slice(offset, offset + pageSize);
+    const paginatedResults = results.slice(offset, offset + pageSize);
 
     return {
         statusCode: 200,
@@ -667,7 +640,7 @@ export const handlePackagesList = async (
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-            "offset": offset + pageSize < transformedResults.length ? (offset + pageSize).toString() : 0,
+            "offset": offset + pageSize < results.length ? (offset + pageSize).toString() : "0",
         },
         body: JSON.stringify(paginatedResults),
     };
