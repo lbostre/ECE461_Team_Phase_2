@@ -195,3 +195,55 @@ export async function deleteUser(authToken: string, username: string, dynamoDb: 
         body: JSON.stringify({ message: "User deleted successfully." })
     };
 }
+
+export async function handleGetUser(
+    authToken: string,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<APIGatewayProxyResult> {
+    try {
+        const token = authToken.replace("bearer ", "").trim();
+        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+
+        // Verify if the decoded token contains a valid name
+        if (!decoded || !decoded.name) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            };
+        }
+        // Fetch the user data from DynamoDB using the username
+        const result = await dynamoDb.send(new GetCommand({
+            TableName: USER_TABLE_NAME,
+            Key: { username: decoded.name },
+        }));
+        if (!result.Item) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "User not found." }),
+            };
+        }
+        const user = result.Item;
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                User: {
+                    name: user.username,
+                    password: user.password, 
+                    isAdmin: user.isAdmin,
+                    permissions: user.permissions,
+                    group: user.group,
+                },
+            }),
+        };
+    } catch (error) {
+        console.error("Error fetching user data:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Internal Server Error" }),
+        };
+    }
+}

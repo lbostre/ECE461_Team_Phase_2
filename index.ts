@@ -15,6 +15,7 @@ import {
     handleAuthenticate,
     registerUser,
     deleteUser,
+    handleGetUser,
 } from "./src/util/authUtil.js";
 // Initialize S3 client
 const s3Client = new S3Client({
@@ -103,6 +104,21 @@ export const handler = async (
                 }),
             };
         }
+        // /users GET 
+        if (path === "/users" && httpMethod === "GET") {
+            const authToken = headers["X-Authorization"] || headers["x-authorization"];
+            if (!authToken) {
+                return {
+                    statusCode: 403,
+                    headers: corsHeaders,
+                    body: JSON.stringify({
+                        error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                    }),
+                };
+            }
+            // Handle the GET user request using the helper function from authUtil.ts
+            return handleGetUser(authToken, dynamoDb);
+        }
         // Validate token
         const isValidToken = await extractAndValidateToken(event);
         if (!isValidToken) {
@@ -114,7 +130,6 @@ export const handler = async (
                 }),
             };
         }
-    
         // Check if pathParameters or ID is missing
         if (!pathParameters || !pathParameters.id) {
             return {
