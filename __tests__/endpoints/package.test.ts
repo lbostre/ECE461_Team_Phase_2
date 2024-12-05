@@ -28,12 +28,6 @@ vi.mock('../../src/main', () => ({
   getRepoData: vi.fn(),
 }));
 
-// Mock the uploadGithubRepoAsZipToS3 and getRepositoryVersion functions from packageUtils
-// vi.mock('../../src/util/packageUtils', () => ({
-//   uploadGithubRepoAsZipToS3: vi.fn(),
-//   getRepositoryVersion: vi.fn(),
-// }));
-
 beforeEach(() => {
   ddbMock.reset();
   s3Mock.reset();
