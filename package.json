@@ -14,12 +14,9 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.7.5",
-    "@types/uuid": "^10.0.0",
     "@vitest/coverage-istanbul": "^2.1.8",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
-    "fs": "^0.0.1-security",
-    "simple-git": "^3.27.0",
     "typescript": "^5.6.3"
   },
   "dependencies": {
@@ -28,7 +25,6 @@
     "@aws-sdk/lib-dynamodb": "^3.705.0",
     "@types/adm-zip": "^0.5.6",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/npm-registry-fetch": "^8.0.7",
     "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
@@ -40,10 +36,8 @@
     "eslint": "^9.12.0",
     "isomorphic-git": "^1.27.1",
     "jsonwebtoken": "^9.0.2",
-    "npm-registry-fetch": "^18.0.2",
     "semver": "^7.6.3",
     "terser": "^5.36.0",
-    "uuid": "^10.0.0",
     "vitest": "^2.1.8"
   }
 }

@@ -92,7 +92,6 @@ export const handler = async (
         return handlePackagePost(body, s3Client, dynamoDb);
     }
 
-    // Handle GET request to /package/{id}
     if (httpMethod === "GET") {
         // /tracks
         if (path === "/tracks") {
