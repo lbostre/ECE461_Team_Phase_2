@@ -68,8 +68,9 @@ export const handler = async (
             return {
                 statusCode: 403,
                 headers: {
-                    "Access-Control-Allow-Origin": "*", // Allow all origins
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
                 },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
@@ -80,36 +81,47 @@ export const handler = async (
     }
 
     // Handle GET request to /package/{id}
-    if (httpMethod === "GET" && pathParameters && pathParameters.id) {
+    if (httpMethod === "GET") {
+        // Validate token
         const isValidToken = await extractAndValidateToken(event);
         if (!isValidToken) {
             return {
                 statusCode: 403,
                 headers: {
-                    "Access-Control-Allow-Origin": "*", // Allow all origins
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
                 },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
                 }),
             };
         }
+    
+        // Check if pathParameters or ID is missing
+        if (!pathParameters || !pathParameters.id) {
+            return {
+                statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+                },
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageID or it is formed improperly, or is invalid.",
+                }),
+            };
+        }
+    
         const id = pathParameters.id;
-        // /package/{id}/rate
+    
+        // Handle specific routes
         if (path === `/package/${id}/rate`) {
             return handlePackageRate(id, dynamoDb);
-        }
-        // /package/{id}
-        else if (path === `/package/${id}`) {
+        } else if (path === `/package/${id}`) {
             return handlePackageGet(id, dynamoClient, s3Client, BUCKET_NAME);
-        }
-        // /package/{id}/cost
-        else if (path === `/package/${id}/cost`) {
-            return handlePackageCost(
-                id,
-                event.queryStringParameters?.dependency === "true",
-                dynamoDb
-            );
+        } else if (path === `/package/${id}/cost`) {
+            return handlePackageCost(id, event.queryStringParameters?.dependency === "true", dynamoDb);
         }
     }
 
@@ -119,8 +131,9 @@ export const handler = async (
             return {
                 statusCode: 403,
                 headers: {
-                    "Access-Control-Allow-Origin": "*", // Allow all origins
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
                 },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
@@ -141,6 +154,11 @@ export const handler = async (
         if (!authToken) {
             return {
                 statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+                },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
                 }),
@@ -150,6 +168,11 @@ export const handler = async (
         if (!isValidToken) {
             return {
                 statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+                },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
                 }),
@@ -165,6 +188,11 @@ export const handler = async (
         if (!authToken) {
             return {
                 statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+                },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
                 }),
@@ -174,6 +202,11 @@ export const handler = async (
         if (!isValidToken) {
             return {
                 statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+                },
                 body: JSON.stringify({
                     error: "Authentication failed due to invalid or missing AuthenticationToken.",
                 }),
@@ -186,6 +219,11 @@ export const handler = async (
     if (path === "/tracks" && httpMethod === "GET") {
         return {
             statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+            },
             body: JSON.stringify({
                 plannedTracks: ["Access control track"],
             }),

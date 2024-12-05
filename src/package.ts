@@ -24,6 +24,12 @@ const BUCKET_NAME = "ece461phase2";
 
 const API_URL = "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
 
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+};
+
 export async function handlePackagePost(
     body: any,
     s3Client: S3Client,
@@ -32,11 +38,7 @@ export async function handlePackagePost(
     if (!body) {
         return {
             statusCode: 400,
-            headers: {
-                "Access-Control-Allow-Origin": "*", // Allow all origins
-                "Access-Control-Allow-Methods": "POST", // Allow specific methods
-                "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Allow the custom header
-            },
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Request body is missing" }),
         };
     }
@@ -61,11 +63,7 @@ export async function handlePackagePost(
         if (data && data.Content && data.URL) {
             return {
                 statusCode: 400,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST",
-                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-                },
+                headers: corsHeaders,
                 body: JSON.stringify({
                     error: "Both Content and URL cannot be set",
                 }),
@@ -134,11 +132,7 @@ export async function handlePackagePost(
                     } else {
                         return {
                             statusCode: 424,
-                            headers: {
-                                "Access-Control-Allow-Origin": "*",
-                                "Access-Control-Allow-Methods": "POST",
-                                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-                            },
+                            headers: corsHeaders,
                             body: JSON.stringify({
                                 error: "Package is not uploaded due to the disqualified rating.",
                             }),
@@ -181,11 +175,7 @@ export async function handlePackagePost(
                     console.error("Error storing metrics in DynamoDB:", error);
                     return {
                         statusCode: 500,
-                        headers: {
-                            "Access-Control-Allow-Origin": "*",
-                            "Access-Control-Allow-Methods": "POST",
-                            "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-                        },
+                        headers: corsHeaders,
                         body: JSON.stringify({
                             error: "Failed to store metrics in DynamoDB",
                             details: error instanceof Error ? error.message : String(error),
@@ -236,11 +226,7 @@ export async function handlePackageGet(
         console.warn(`Package with ID ${id} not found.`);
         return {
             statusCode: 404,
-            headers: {
-                "Access-Control-Allow-Origin": "*", // Allow all origins
-                "Access-Control-Allow-Methods": "GET", // Allow specific methods
-                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
-            },
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Package not found" }),
         };
     }
@@ -248,11 +234,7 @@ export async function handlePackageGet(
     console.log(`Successfully retrieved package data for ID: ${id}`);
     return {
         statusCode: 200,
-        headers: {
-            "Access-Control-Allow-Origin": "*", // Allow all origins
-            "Access-Control-Allow-Methods": "GET", // Allow specific methods
-            "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
-        },
+        headers: corsHeaders,
         body: JSON.stringify(packageData),
     };
 }
@@ -279,6 +261,7 @@ export async function handlePackageRate(
             console.warn(`No metrics found for package with ID: ${id}`);
             return {
                 statusCode: 404,
+                headers: corsHeaders,
                 body: JSON.stringify({
                     error: "Metrics not found for this package",
                 }),
@@ -290,6 +273,7 @@ export async function handlePackageRate(
 
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({ PackageRating: metrics }),
         };
     } catch (error) {
@@ -299,6 +283,7 @@ export async function handlePackageRate(
         );
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "Failed to fetch metrics",
             }),
@@ -322,6 +307,7 @@ export async function handlePackageCost(
             const { standaloneCost, totalCost } = costData.Item;
             return {
                 statusCode: 200,
+                headers: corsHeaders,
                 body: JSON.stringify({
                     [id]: includeDependencies
                         ? { standaloneCost, totalCost }
@@ -339,6 +325,7 @@ export async function handlePackageCost(
         if (!packageData.Item) {
             return {
                 statusCode: 404,
+                headers: corsHeaders,
                 body: JSON.stringify({ error: "Package does not exist." }),
             };
         }
@@ -348,6 +335,7 @@ export async function handlePackageCost(
         if (!repoUrl) {
             return {
                 statusCode: 400,
+                headers: corsHeaders,
                 body: JSON.stringify({ error: "Missing repository URL." }),
             };
         }
@@ -386,12 +374,14 @@ export async function handlePackageCost(
 
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify(response),
         };
     } catch (error) {
         console.error("Error calculating package cost:", error);
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Error calculating package cost." }),
         };
     }
@@ -403,12 +393,6 @@ export async function handlePackageUpdate(
     dynamoDb: DynamoDBDocumentClient,
     s3Client: S3Client
 ): Promise<APIGatewayProxyResult> {
-    const corsHeaders = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-    };
-
     try {
         if (!body) {
             return {
