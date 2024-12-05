@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getRepoData } from '../../src/main.ts';
+import { getRepoData } from '../../src/main';
 import * as repoUtils from '../../src/util/repoUtils';
 import * as fetchData from '../../src/util/fetchData';
 import * as busFactor from '../../src/metrics/busFactor';
@@ -71,7 +71,7 @@ describe('getRepoData', () => {
         vi.mocked(repoUtils.convertToApiUrl).mockReturnValue('https://api.github.com/repos/test/repo');
         vi.mocked(repoUtils.findReadme).mockResolvedValue('README content');
         vi.mocked(repoUtils.findLicense).mockResolvedValue('LICENSE content');
-        vi.mocked(fetchData.fetchCommits).mockResolvedValue(['contributor1', 'contributor2']);
+        vi.mocked(fetchData.fetchCommits).mockResolvedValue([['contributor1', 1], ['contributor2', 2]]);
         vi.mocked(fetchData.fetchIssues).mockResolvedValue({
         openIssues: 10,
         closedIssues: 20,
@@ -95,7 +95,7 @@ describe('getRepoData', () => {
         vi.mocked(repoUtils.cloneRepo).mockResolvedValue('/path/to/repo');
         vi.mocked(repoUtils.findReadme).mockResolvedValue('README content');
         vi.mocked(repoUtils.findLicense).mockResolvedValue('LICENSE content');
-        vi.mocked(fetchData.fetchCommits).mockResolvedValue(['contributor1', 'contributor2']);
+        vi.mocked(fetchData.fetchCommits).mockResolvedValue([['contributor1', 1], ['contributor2', 2]]);
         vi.mocked(fetchData.fetchIssues).mockResolvedValue({
         openIssues: 10,
         closedIssues: 20,
@@ -116,7 +116,7 @@ describe('getRepoData', () => {
         expect(repoUtils.findLicense).toHaveBeenCalledWith('/path/to/repo', 'README content');
         expect(fetchData.fetchCommits).toHaveBeenCalledWith('https://api.github.com/repos/test/repo/commits', expect.any(Object));
         expect(fetchData.fetchIssues).toHaveBeenCalledWith('https://api.github.com/repos/test/repo/issues', expect.any(Object));
-        expect(busFactor.busFactor).toHaveBeenCalledWith(['contributor1', 'contributor2']);
+        expect(busFactor.busFactor).toHaveBeenCalledWith([['contributor1', 1], ['contributor2', 2]]);
         expect(correctness.correctness).toHaveBeenCalledWith(10, 20);
         expect(responsiveness.responsiveness).toHaveBeenCalledWith([1, 2, 3]);
         expect(rampUpTime.rampUpTime).toHaveBeenCalledWith('README content');
