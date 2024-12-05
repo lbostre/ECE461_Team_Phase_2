@@ -481,7 +481,7 @@ export const getExactPackage = async (
             return {
                 Version: item.Version,
                 Name: extractNameFromId(item.ECEfoursixone),
-                ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+                ID: item.ECEfoursixone
             };
         }
         return null;
@@ -520,7 +520,7 @@ export const getBoundedRangePackages = async (
         return items.map(item => ({
             Version: item.Version,
             Name: extractNameFromId(item.ECEfoursixone),
-            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+            ID: item.ECEfoursixone
         }));
     } catch (error) {
         console.error("Error querying bounded range packages:", error);
@@ -567,7 +567,7 @@ export const getCaratPackages = async (
         return filteredItems.map(item => ({
             Version: item.Version,
             Name: extractNameFromId(item.ECEfoursixone),
-            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+            ID: item.ECEfoursixone
         }));
     } catch (error) {
         console.error("Error querying carat packages:", error);
@@ -614,10 +614,49 @@ export const getTildePackages = async (
         return filteredItems.map(item => ({
             Version: item.Version,
             Name: extractNameFromId(item.ECEfoursixone),
-            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+            ID: item.ECEfoursixone
         }));
     } catch (error) {
         console.error("Error querying tilde packages:", error);
         throw new Error("Could not query tilde packages.");
     }
+};
+
+export const getAllPackages = async (dynamoDb: DynamoDBDocumentClient) => {
+    let params: {
+        TableName: string;
+        ExclusiveStartKey?: Record<string, any>;
+    } = {
+        TableName: "ECE461_Database",
+    };
+
+    let allPackages = [];
+    let data;
+
+    try {
+        do {
+            // Create a new ScanCommand each iteration for pagination
+            const command = new ScanCommand(params);
+            data = await dynamoDb.send(command);
+
+            // Check if data.Items is present and add it to the results
+            if (data.Items) {
+                allPackages.push(...data.Items.map(item => {
+                    return {
+                        Version: item.Version,
+                        Name: extractNameFromId(item.ECEfoursixone), 
+                        ID: item.ECEfoursixone,
+                    };
+                }));
+            }
+
+            // Update ExclusiveStartKey to paginate if there are more records to read
+            params.ExclusiveStartKey = data.LastEvaluatedKey;
+        } while (data.LastEvaluatedKey);
+    } catch (error) {
+        console.error("Error scanning DynamoDB:", error);
+        throw new Error("Could not retrieve all packages.");
+    }
+
+    return allPackages;
 };

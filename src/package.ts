@@ -14,6 +14,7 @@ import {
     getCaratPackages,
     getBoundedRangePackages,
     getExactPackage,
+    getAllPackages,
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
@@ -581,15 +582,20 @@ export const handlePackagesList = async (
         return {
             statusCode: 400,
             body: JSON.stringify({
-                error: "The request body must be a non-empty array of PackageQuery.",
+                error: "There is missing field(s) in the PackageQuery or it is formed improperly, or is invalid.",
             }),
         };
     }
 
     let results: any[] = [];
 
+    // Iterate over each query to collect results
     for (const query of packagesQuery) {
-        if (query.Version && query.Name) {
+        if (query.Name === '*') {
+            // If Name is '*', return all packages in the database
+            const allPackages = await getAllPackages(dynamoDb);
+            results.push(...allPackages);
+        } else if (query.Version && query.Name) {
             // Handle different version queries: Exact, Bounded Range, Carat, Tilde
             if (query.Version.includes("Exact")) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
