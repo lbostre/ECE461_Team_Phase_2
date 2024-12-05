@@ -68,26 +68,29 @@ describe('/package/{id}/cost endpoint', () => {
         expect(responseBody['357898765']).toHaveProperty('standaloneCost', 50.0);
     });
 
-    // it('should return 400 if the package ID is missing', async () => {
-    //     const event: APIGatewayProxyEvent = {
-    //     httpMethod: 'GET',
-    //     path: '/package/357898765/cost',
-    //     headers: { 'X-Authorization': validAuthToken },
-    //     pathParameters: { id: '' },
-    //     queryStringParameters: { dependency: 'false' },
-    //     body: null,
-    //     isBase64Encoded: false,
-    //     multiValueHeaders: {},
-    //     multiValueQueryStringParameters: null,
-    //     stageVariables: null,
-    //     requestContext: {} as any,
-    //     resource: '',
-    //     };
+    it('should return 400 if the package ID is missing', async () => {
+        // Mock the validateToken function to return true for valid tokens
+        vi.mocked(validateToken).mockResolvedValue(true);
+        
+        const event: APIGatewayProxyEvent = {
+        httpMethod: 'GET',
+        path: '/package/357898765/cost',
+        headers: { 'X-Authorization': validAuthToken },
+        pathParameters: { id: '' },
+        queryStringParameters: { dependency: 'false' },
+        body: null,
+        isBase64Encoded: false,
+        multiValueHeaders: {},
+        multiValueQueryStringParameters: null,
+        stageVariables: null,
+        requestContext: {} as any,
+        resource: '',
+        };
 
-    //     const result = await handler(event);
+        const result = await handler(event);
 
-    //     expect(result.statusCode).toBe(400);
-    // });
+        expect(result.statusCode).toBe(400);
+    });
 
     it('should return 403 if authentication token is missing or invalid', async () => {
         const event: APIGatewayProxyEvent = {
@@ -117,10 +120,7 @@ describe('/package/{id}/cost endpoint', () => {
             });
 
         // Mock the DynamoDB GetCommand to return undefined for nonexistent package ID
-        ddbMock.on(GetCommand, {
-            TableName: 'ECE461_CostTable',
-            Key: { packageID: 'nonexistent' },
-        }).resolves({ Item: undefined });
+        ddbMock.on(GetCommand).resolves({ Item: undefined });
 
         const event: APIGatewayProxyEvent = {
         httpMethod: 'GET',
