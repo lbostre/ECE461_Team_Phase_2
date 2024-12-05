@@ -1,16 +1,24 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import AWS from "aws-sdk";
-import { handlePackagePost, 
-         handlePackageGet, 
-         handlePackageRate,
-         handlePackageCost,
-       } from "./src/package.js";
-import { validateToken, handleAuthenticate, registerUser, deleteUser } from "./src/util/authUtil.js";
+import {
+    handlePackagePost,
+    handlePackageGet,
+    handlePackageRate,
+    handlePackageCost,
+} from "./src/package.js";
+import {
+    validateToken,
+    handleAuthenticate,
+    registerUser,
+    deleteUser,
+} from "./src/util/authUtil.js";
 // Initialize S3 client
 export const s3 = new AWS.S3();
 export const BUCKET_NAME = "ece461phase2";
 
-async function extractAndValidateToken(event: APIGatewayEvent): Promise<boolean> {
+async function extractAndValidateToken(
+    event: APIGatewayEvent
+): Promise<boolean> {
     const authHeader = event.headers["X-Authorization"];
     if (!authHeader) {
         return false; // No token provided
@@ -37,7 +45,13 @@ export const handler = async (
         if (!isValidToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         return handlePackagePost(body);
@@ -49,38 +63,52 @@ export const handler = async (
         if (!isValidToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
-        const id = pathParameters.id; 
-        // /package/{id}/rate 
-        if (path === `/package/${id}/rate`) { 
+        const id = pathParameters.id;
+        // /package/{id}/rate
+        if (path === `/package/${id}/rate`) {
             return handlePackageRate(id);
         }
         // /package/{id}
-        else if (path === `/package/${id}`) {  
+        else if (path === `/package/${id}`) {
             return handlePackageGet(id);
         }
         // /package/{id}/cost
         else if (path === `/package/${id}/cost`) {
-            return handlePackageCost(id, event.queryStringParameters?.dependency === "true");
+            return handlePackageCost(
+                id,
+                event.queryStringParameters?.dependency === "true"
+            );
         }
     }
 
     //Register a User
     if (path === "/users" && httpMethod === "POST") {
-        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+        const authToken =
+            headers["X-Authorization"] || headers["x-authorization"];
         if (!authToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         const isValidToken = await extractAndValidateToken(event);
         if (!isValidToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         const newUser = body ? JSON.parse(body) : null;
@@ -88,30 +116,39 @@ export const handler = async (
     }
 
     //Delete a User
-    if (pathParameters?.id && path === `/users/${pathParameters.id}` && httpMethod === "DELETE") {
-        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+    if (
+        pathParameters?.id &&
+        path === `/users/${pathParameters.id}` &&
+        httpMethod === "DELETE"
+    ) {
+        const authToken =
+            headers["X-Authorization"] || headers["x-authorization"];
         if (!authToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         const isValidToken = await extractAndValidateToken(event);
         if (!isValidToken) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         return deleteUser(authToken, pathParameters.id);
     }
 
     // /tracks
-    if (path === '/tracks' && httpMethod === "GET") {
+    if (path === "/tracks" && httpMethod === "GET") {
         return {
             statusCode: 200,
             body: JSON.stringify({
-                plannedTracks: ["Access control track"]
+                plannedTracks: ["Access control track"],
             }),
         };
     }
