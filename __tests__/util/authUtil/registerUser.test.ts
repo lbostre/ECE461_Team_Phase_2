@@ -1,10 +1,9 @@
 // Test handleAuthenticate function
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import jwt from 'jsonwebtoken';
 import { registerUser } from '../../../src/util/authUtil';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -42,7 +41,7 @@ describe('registerUser', () => {
             group: 'group',
         };
 
-        const result = await registerUser(`bearer ${token}`, newUser, ddbMock);
+        const result = await registerUser(`bearer ${token}`, newUser, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(403);
         const responseBody = JSON.parse(result.body);
@@ -61,7 +60,7 @@ describe('registerUser', () => {
 
         ddbMock.on(PutCommand).resolves({});
 
-        const result = await registerUser(`bearer ${token}`, newUser, ddbMock);
+        const result = await registerUser(`bearer ${token}`, newUser, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(201);
         const responseBody = JSON.parse(result.body);
@@ -80,7 +79,7 @@ describe('registerUser', () => {
 
         ddbMock.on(PutCommand).rejects(new Error('Internal Server Error'));
 
-        const result = await registerUser(`bearer ${token}`, newUser, ddbMock);
+        const result = await registerUser(`bearer ${token}`, newUser, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(500);
         const responseBody = JSON.parse(result.body);
