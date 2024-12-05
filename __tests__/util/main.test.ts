@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getRepoData } from '../../src/main.ts';
+import { getRepoData } from '../../src/main';
 import * as repoUtils from '../../src/util/repoUtils';
 import * as fetchData from '../../src/util/fetchData';
 import * as busFactor from '../../src/metrics/busFactor';
