@@ -78,6 +78,16 @@ export const handler = async (
 
     // Handle GET request to /package/{id}
     if (httpMethod === "GET") {
+        // /tracks
+        if (path === "/tracks") {
+            return {
+                statusCode: 200,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    plannedTracks: ["Access control track"],
+                }),
+            };
+        }
         // Validate token
         const isValidToken = await extractAndValidateToken(event);
         if (!isValidToken) {
@@ -180,17 +190,6 @@ export const handler = async (
             };
         }
         return deleteUser(authToken, pathParameters.id, dynamoDb);
-    }
-
-    // /tracks
-    if (path === "/tracks" && httpMethod === "GET") {
-        return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({
-                plannedTracks: ["Access control track"],
-            }),
-        };
     }
 
     return {
