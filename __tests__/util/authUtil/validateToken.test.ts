@@ -1,10 +1,9 @@
 // Test handleAuthenticate function
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import jwt from 'jsonwebtoken';
 import { validateToken } from '../../../src/util/authUtil';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -23,7 +22,7 @@ beforeEach(() => {
 
 describe('validateToken', () => {
     it('should return false if the token is invalid', async () => {
-        const result = await validateToken('invalid-token', ddbMock);
+        const result = await validateToken('invalid-token', ddbMock as unknown as DynamoDBDocumentClient);
         expect(result).toBe(false);
     });
 
@@ -37,7 +36,7 @@ describe('validateToken', () => {
             },
         });
 
-        const result = await validateToken(token, ddbMock);
+        const result = await validateToken(token, ddbMock as unknown as DynamoDBDocumentClient);
         expect(result).toBe(false);
     });
 
@@ -53,7 +52,7 @@ describe('validateToken', () => {
 
         ddbMock.on(UpdateCommand).resolves({});
 
-        const result = await validateToken(token, ddbMock);
+        const result = await validateToken(token, ddbMock as unknown as DynamoDBDocumentClient);
         expect(result).toBe(true);
     });
 
@@ -61,7 +60,7 @@ describe('validateToken', () => {
         const token = jwt.sign({ name: 'testuser' }, JWT_SECRET);
         ddbMock.on(GetCommand).rejects(new Error('Internal Server Error'));
 
-        const result = await validateToken(token, ddbMock);
+        const result = await validateToken(token, ddbMock as unknown as DynamoDBDocumentClient);
         expect(result).toBe(false);
     });
 });

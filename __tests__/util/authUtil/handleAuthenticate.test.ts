@@ -1,10 +1,9 @@
 // Test handleAuthenticate function
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import jwt from 'jsonwebtoken';
 import { handleAuthenticate } from '../../../src/util/authUtil';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -44,7 +43,7 @@ describe('handleAuthenticate', () => {
       },
     });
 
-    const result = await handleAuthenticate(body, ddbMock);
+    const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(200);
     const responseBody = JSON.parse(result.body);
@@ -66,7 +65,7 @@ describe('handleAuthenticate', () => {
       // Missing Secret field
     });
 
-    const result = await handleAuthenticate(body, ddbMock);
+    const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(400);
   });
@@ -86,7 +85,7 @@ describe('handleAuthenticate', () => {
       },
     });
 
-    const result = await handleAuthenticate(body, ddbMock);
+    const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(401);
 
@@ -124,7 +123,7 @@ describe('handleAuthenticate', () => {
       },
     });
 
-    const result = await handleAuthenticate(body, ddbMock);
+    const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(200);
     const responseBody = JSON.parse(result.body);
@@ -162,7 +161,7 @@ describe('handleAuthenticate', () => {
       },
     });
 
-    const result = await handleAuthenticate(body, ddbMock);
+    const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(500);
     const responseBody = JSON.parse(result.body);

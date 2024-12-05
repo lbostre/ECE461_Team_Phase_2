@@ -84,26 +84,29 @@ describe('/package/{id}/rate endpoint', () => {
         expect(responseBody.PackageRating).toHaveProperty('LicenseScore', 1.0);
     });
 
-    // it('should return 400 if the package ID is missing', async () => {
-    //     const event: APIGatewayProxyEvent = {
-    //     httpMethod: 'GET',
-    //     path: '/package//rate',
-    //     headers: { 'X-Authorization': validAuthToken },
-    //     pathParameters: { id: '' },
-    //     queryStringParameters: null,
-    //     body: null,
-    //     isBase64Encoded: false,
-    //     multiValueHeaders: {},
-    //     multiValueQueryStringParameters: null,
-    //     stageVariables: null,
-    //     requestContext: {} as any,
-    //     resource: '',
-    //     };
+    it('should return 400 if the package ID is missing', async () => {
+        // Mock the validateToken function to return true for valid tokens
+        vi.mocked(validateToken).mockResolvedValue(true);
+        
+        const event: APIGatewayProxyEvent = {
+        httpMethod: 'GET',
+        path: '/package//rate',
+        headers: { 'X-Authorization': validAuthToken },
+        pathParameters: { id: '' },
+        queryStringParameters: null,
+        body: null,
+        isBase64Encoded: false,
+        multiValueHeaders: {},
+        multiValueQueryStringParameters: null,
+        stageVariables: null,
+        requestContext: {} as any,
+        resource: '',
+        };
 
-    //     const result = await handler(event);
+        const result = await handler(event);
 
-    //     expect(result.statusCode).toBe(400);
-    // });
+        expect(result.statusCode).toBe(400);
+    });
 
     it('should return 403 if authentication token is missing or invalid', async () => {
         const event: APIGatewayProxyEvent = {
