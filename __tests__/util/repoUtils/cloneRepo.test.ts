@@ -25,7 +25,7 @@ describe('cloneRepo', () => {
         vi.mocked(fs.existsSync).mockImplementation((path) => path === actualTempRepoPath);
 
         // Mock fs.mkdirSync to create the directory
-        vi.mocked(fs.mkdirSync).mockImplementation(() => {});
+        vi.mocked(fs.mkdirSync).mockImplementation(() => tempRepoPath);
 
         // Mock git.clone to simulate cloning the repository
         vi.mocked(git.clone).mockResolvedValue(undefined);
@@ -49,7 +49,7 @@ describe('cloneRepo', () => {
         vi.mocked(fs.existsSync).mockImplementation((path) => path === tempRepoPath);
 
         // Mock fs.mkdirSync to create the directory
-        vi.mocked(fs.mkdirSync).mockImplementation(() => {});
+        vi.mocked(fs.mkdirSync).mockImplementation(() => tempRepoPath);
 
         // Mock git.clone to throw an error
         vi.mocked(git.clone).mockRejectedValue(new Error('Cloning failed'));
