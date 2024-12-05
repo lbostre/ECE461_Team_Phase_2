@@ -16,7 +16,6 @@ import { getRepoData } from "./main.js";
 import { PutCommand, GetCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 import semver from "semver";
-import { s3Client } from "../index.js";
 
 const TABLE_NAME = "ECE461_Database";
 const COST_TABLE_NAME = "ECE461_CostTable";

@@ -1,5 +1,4 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import jwt from "jsonwebtoken";
 import { AuthenticationRequest } from "../../types.js";
@@ -7,14 +6,14 @@ import { AuthenticationRequest } from "../../types.js";
 const USER_TABLE_NAME = "ECE461_UsersTable";
 const JWT_SECRET = process.env.JWT_SECRET || "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
 
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*", // Allow requests from any origin
+    "Access-Control-Allow-Methods": "OPTIONS, PUT", // Specify allowed methods
+    "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Specify allowed headers
+};
+
 // Handle authentication requests and token creation
 export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
-    const corsHeaders = {
-        "Access-Control-Allow-Origin": "*", // Allow requests from any origin
-        "Access-Control-Allow-Methods": "OPTIONS, PUT", // Specify allowed methods
-        "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Specify allowed headers
-    };
-
     try {
         const parsedBody = body ? JSON.parse(body) : null;
 
@@ -127,6 +126,7 @@ export async function registerUser(
 
         return {
             statusCode: 201,
+            headers: corsHeaders,
             body: JSON.stringify({
                 message: "User registered successfully.",
                 token: `bearer ${token}`,
@@ -136,6 +136,7 @@ export async function registerUser(
         console.error("Error registering user:", error);
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Internal Server Error" }),
         };
     }
@@ -175,11 +176,10 @@ export async function deleteUser(authToken: string, username: string, dynamoDb: 
     const token = authToken.replace("bearer ", "").trim();
     const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
-
-
     if (!decoded || (decoded.name !== username && !decoded.isAdmin)) {
         return {
             statusCode: 403,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Unauthorized action." }),
         };
     }
@@ -189,5 +189,9 @@ export async function deleteUser(authToken: string, username: string, dynamoDb: 
         Key: { username },
     }));
 
-    return { statusCode: 200, body: JSON.stringify({ message: "User deleted successfully." }) };
+    return { 
+        statusCode: 200, 
+        headers: corsHeaders, 
+        body: JSON.stringify({ message: "User deleted successfully." })
+    };
 }
