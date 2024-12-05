@@ -8,6 +8,7 @@ import {
     handlePackageRate,
     handlePackageCost,
     handlePackageUpdate,
+    handlePackagesList,
 } from "./src/package.js";
 import {
     validateToken,
@@ -47,7 +48,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
     console.log("Received event:", JSON.stringify(event, null, 2));
 
-    const { httpMethod, path, pathParameters, body, headers } = event;
+    const { httpMethod, path, pathParameters, body, headers, queryStringParameters } = event;
 
     if (httpMethod === "OPTIONS") {
         return {
@@ -55,6 +56,21 @@ export const handler = async (
             headers: corsHeaders,
             body: "",
         };
+    }
+
+    if (httpMethod === "POST" && path === "/packages") {
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const offset = queryStringParameters?.offset ? parseInt(queryStringParameters.offset, 10) : 0;
+        return handlePackagesList(body, offset, dynamoDb);
     }
 
     //Get Auth Token

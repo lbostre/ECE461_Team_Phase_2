@@ -10,6 +10,10 @@ import {
     extractVersionFromPackageJson,
     fetchPackageById,
     fetchCostWithGraphQL,
+    getTildePackages,
+    getCaratPackages,
+    getBoundedRangePackages,
+    getExactPackage,
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
@@ -20,8 +24,6 @@ import semver from "semver";
 const TABLE_NAME = "ECE461_Database";
 const COST_TABLE_NAME = "ECE461_CostTable";
 const BUCKET_NAME = "ece461phase2";
-
-const API_URL = "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -94,6 +96,19 @@ export async function handlePackagePost(
                     version = await extractVersionFromPackageJson(data.Content);
                     name = `${data.Name}`;
                     const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
+                    const existingPackage = await dynamoDb.send(new GetCommand({
+                        TableName: TABLE_NAME,
+                        Key: { ECEfoursixone: fileName.replace('.zip', '') }
+                    }));
+                    if (existingPackage.Item) {
+                        return {
+                            statusCode: 409,
+                            headers: corsHeaders,
+                            body: JSON.stringify({
+                                error: "Package already exists.",
+                            }),
+                        };
+                    }
                     if (URL != null) {
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
@@ -124,6 +139,19 @@ export async function handlePackagePost(
                     }
                     name = `${githubURL.split("/").pop()}`;
                     const fileName = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}.zip`;
+                    const existingPackage = await dynamoDb.send(new GetCommand({
+                        TableName: TABLE_NAME,
+                        Key: { ECEfoursixone: fileName.replace('.zip', '') }
+                    }));
+                    if (existingPackage.Item) {
+                        return {
+                            statusCode: 409,
+                            headers: corsHeaders,
+                            body: JSON.stringify({
+                                error: "Package already exists.",
+                            }),
+                        };
+                    }
                     metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
                         zipBase64 = await uploadGithubRepoAsZipToS3(githubURL, fileName, s3Client, BUCKET_NAME);
@@ -523,3 +551,130 @@ export async function handlePackageUpdate(
         };
     }
 }
+
+interface PackageQuery {
+    Name: string;
+    Version: string;
+}
+
+export const handlePackagesList = async (
+    body: string | null,
+    offset: number,
+    dynamoDb: DynamoDBDocumentClient
+) => {
+    if (!body) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "There is missing field(s) in the PackageQuery or it is formed improperly, or is invalid.",
+            }),
+        };
+    }
+
+    let packagesQuery: PackageQuery[];
+    try {
+        packagesQuery = JSON.parse(body);
+    } catch (error) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Invalid JSON in request body.",
+            }),
+        };
+    }
+
+    if (!Array.isArray(packagesQuery) || packagesQuery.length === 0) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "The request body must be a non-empty array of PackageQuery.",
+            }),
+        };
+    }
+
+    let results: any[] = [];
+
+    for (const query of packagesQuery) {
+        if (query.Version && query.Name) {
+            // Validate that the "Version" is not combining multiple formats
+            const versionFormats = {
+                Exact: query.Version.includes("Exact"),
+                BoundedRange: query.Version.includes("Bounded Range"),
+                Carat: query.Version.includes("Carat"),
+                Tilde: query.Version.includes("Tilde"),
+            };
+
+            const matchedFormats = Object.values(versionFormats).filter(Boolean);
+            if (matchedFormats.length !== 1) {
+                return {
+                    statusCode: 400,
+                    body: JSON.stringify({
+                        error: "Invalid version format. The 'Version' field cannot be a combination of multiple version formats.",
+                    }),
+                };
+            }
+
+            // Handle different version queries: Exact, Bounded Range, Carat, Tilde
+            if (versionFormats.Exact) {
+                const version = query.Version.match(/\(([^)]+)\)/)?.[1];
+                if (version) {
+                    const exactPackage = await getExactPackage(query.Name, version, dynamoDb);
+                    if (exactPackage) {
+                        results.push(exactPackage);
+                    }
+                }
+            } else if (versionFormats.BoundedRange) {
+                const range = query.Version.match(/\(([^)]+)\)/)?.[1]?.split("-");
+                if (range && range.length === 2) {
+                    const boundedPackages = await getBoundedRangePackages(query.Name, range, dynamoDb);
+                    results.push(...boundedPackages);
+                }
+            } else if (versionFormats.Carat) {
+                const version = query.Version.match(/\(([^)]+)\)/)?.[1];
+                if (version) {
+                    const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
+                    results.push(...caratPackages);
+                }
+            } else if (versionFormats.Tilde) {
+                const version = query.Version.match(/\(([^)]+)\)/)?.[1];
+                if (version) {
+                    const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
+                    results.push(...tildePackages);
+                }
+            }
+        }
+    }
+
+    // Removing duplicate packages from the results
+    results = results.filter((item, index, self) =>
+        index === self.findIndex((t) => (
+            t.ID === item.ID && t.Version === item.Version
+        ))
+    );
+
+    // Transforming the results to match the expected response structure
+    const transformedResults = results.map(item => {
+        // Extracting the name by removing the version numbers from the `ECEfoursixone` key
+        const name = item.ECEfoursixone.replace(/[0-9]/g, '');
+        return {
+            Version: item.Version,
+            Name: name,
+            ID: name.toLowerCase()
+        };
+    });
+
+    // Pagination logic
+    const pageSize = 10;
+    const paginatedResults = transformedResults.slice(offset, offset + pageSize);
+
+    return {
+        statusCode: 200,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+            "offset": offset + pageSize < transformedResults.length ? (offset + pageSize).toString() : 0,
+        },
+        body: JSON.stringify(paginatedResults),
+    };
+};

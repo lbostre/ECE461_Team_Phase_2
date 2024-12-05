@@ -4,8 +4,9 @@ import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import semver from "semver";
 const TABLE_NAME = 'ECE461_Database';
 
 // create result
@@ -450,3 +451,173 @@ export async function fetchCostWithGraphQL(
     }
 }
 
+const extractNameFromId = (id: string): string => {
+    return id.replace(/[0-9]/g, '');
+};
+
+// Function to get a package by an exact version
+export const getExactPackage = async (
+    name: string,
+    version: string,
+    dynamoDb: DynamoDBDocumentClient
+) => {
+    try {
+        // Construct the key from name and version
+        const packageId = `${name}${version.replace(/\./g, "")}`;
+
+        const params = {
+            TableName: "ECE461_Database",
+            KeyConditionExpression: "ECEfoursixone = :id",
+            ExpressionAttributeValues: {
+                ":id": packageId,
+            },
+        };
+
+        const command = new QueryCommand(params);
+        const response = await dynamoDb.send(command);
+
+        if (response.Items && response.Items.length > 0) {
+            const item = response.Items[0];
+            return {
+                Version: item.Version,
+                Name: extractNameFromId(item.ECEfoursixone),
+                ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error("Error querying exact package:", error);
+        throw new Error("Could not query exact package.");
+    }
+};
+
+// Function to get packages within a bounded range
+export const getBoundedRangePackages = async (
+    name: string,
+    range: string[],
+    dynamoDb: DynamoDBDocumentClient
+) => {
+    const [startVersion, endVersion] = range;
+
+    try {
+        const params = {
+            TableName: "ECE461_Database",
+            FilterExpression: "contains(ECEfoursixone, :name) AND #version BETWEEN :start AND :end",
+            ExpressionAttributeNames: {
+                "#version": "Version"
+            },
+            ExpressionAttributeValues: {
+                ":name": name,
+                ":start": startVersion,
+                ":end": endVersion
+            }
+        };
+
+        const command = new ScanCommand(params);
+        const response = await dynamoDb.send(command);
+
+        const items = response.Items ? response.Items : [];
+        return items.map(item => ({
+            Version: item.Version,
+            Name: extractNameFromId(item.ECEfoursixone),
+            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+        }));
+    } catch (error) {
+        console.error("Error querying bounded range packages:", error);
+        throw new Error("Could not query bounded range packages.");
+    }
+};
+
+// Function to get packages using Carat (^version)
+export const getCaratPackages = async (
+    name: string,
+    version: string,
+    dynamoDb: DynamoDBDocumentClient
+) => {
+    // Make sure `version` is not null
+    if (!version) {
+        throw new Error("Version must be provided");
+    }
+
+    try {
+        // Create the valid semver range for carat version
+        const versionFilter = semver.validRange(`^${version}`);
+        if (!versionFilter) {
+            throw new Error("Invalid version format for carat range");
+        }
+
+        // Scan for items that match the given name pattern
+        const params = {
+            TableName: "ECE461_Database",
+            FilterExpression: "contains(ECEfoursixone, :name)",
+            ExpressionAttributeValues: {
+                ":name": name,
+            }
+        };
+
+        const command = new ScanCommand(params);
+        const response = await dynamoDb.send(command);
+        const items = response.Items ? response.Items : [];
+
+        // Filter results based on the semver comparison
+        const filteredItems = items.filter(item => {
+            return semver.satisfies(item.Version, versionFilter);
+        });
+
+        return filteredItems.map(item => ({
+            Version: item.Version,
+            Name: extractNameFromId(item.ECEfoursixone),
+            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+        }));
+    } catch (error) {
+        console.error("Error querying carat packages:", error);
+        throw new Error("Could not query carat packages.");
+    }
+};
+
+// Function to get packages using Tilde (~version)
+export const getTildePackages = async (
+    name: string,
+    version: string,
+    dynamoDb: DynamoDBDocumentClient
+) => {
+    // Make sure `version` is not null
+    if (!version) {
+        throw new Error("Version must be provided");
+    }
+
+    try {
+        // Create the valid semver range for tilde version
+        const versionFilter = semver.validRange(`~${version}`);
+        if (!versionFilter) {
+            throw new Error("Invalid version format for tilde range");
+        }
+
+        // Scan for items that match the given name pattern
+        const params = {
+            TableName: "ECE461_Database",
+            FilterExpression: "contains(ECEfoursixone, :name)",
+            ExpressionAttributeValues: {
+                ":name": name,
+            }
+        };
+
+        const command = new ScanCommand(params);
+        const response = await dynamoDb.send(command);
+        const items = response.Items ? response.Items : [];
+
+        // Filter results based on the semver comparison
+        const filteredItems = items.filter(item => {
+            return semver.satisfies(item.Version, versionFilter);
+        });
+
+        return filteredItems.map(item => ({
+            Version: item.Version,
+            Name: extractNameFromId(item.ECEfoursixone),
+            ID: extractNameFromId(item.ECEfoursixone).toLowerCase()
+        }));
+    } catch (error) {
+        console.error("Error querying tilde packages:", error);
+        throw new Error("Could not query tilde packages.");
+    }
+};
