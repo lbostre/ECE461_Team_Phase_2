@@ -33,7 +33,7 @@ const corsHeaders = {
 async function extractAndValidateToken(
     event: APIGatewayEvent
 ): Promise<boolean> {
-    const authHeader = event.headers["X-Authorization"];
+    const authHeader = event.headers["X-Authorization"] || event.headers["x-authorization"];
     if (!authHeader) {
         return false; // No token provided
     }
@@ -133,8 +133,7 @@ export const handler = async (
 
     //Register a User
     if (path === "/users" && httpMethod === "POST") {
-        const authToken =
-            headers["X-Authorization"] || headers["x-authorization"];
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
         if (!authToken) {
             return {
                 statusCode: 403,
