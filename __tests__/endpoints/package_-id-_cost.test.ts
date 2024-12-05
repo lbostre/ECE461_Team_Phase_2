@@ -118,8 +118,8 @@ describe('/package/{id}/cost endpoint', () => {
 
         // Mock the DynamoDB GetCommand to return undefined for nonexistent package ID
         ddbMock.on(GetCommand, {
-        TableName: 'ECE461_CostTable',
-        Key: { packageID: 'nonexistent' },
+            TableName: 'ECE461_CostTable',
+            Key: { packageID: 'nonexistent' },
         }).resolves({ Item: undefined });
 
         const event: APIGatewayProxyEvent = {
