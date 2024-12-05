@@ -13,9 +13,9 @@ import {
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import AWS from 'aws-sdk';
+import AWS from "aws-sdk";
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
-const TABLE_NAME = 'ECE461_Database';
+const TABLE_NAME = "ECE461_Database";
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
@@ -26,12 +26,17 @@ export async function handlePackagePost(
     if (!body) {
         return {
             statusCode: 400,
+            headers: {
+                "Access-Control-Allow-Origin": "*", // Allow all origins
+                "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+            },
             body: JSON.stringify({ error: "Request body is missing" }),
         };
     }
 
     try {
-        if (typeof body === 'string') {
+        if (typeof body === "string") {
             body = JSON.parse(body);
         }
 
@@ -41,7 +46,7 @@ export async function handlePackagePost(
             URL: body.URL,
             Content: body.Content,
             debloat: body.debloat,
-            Name: body.Name
+            Name: body.Name,
         };
 
         console.log("Package data:", data);
@@ -50,6 +55,11 @@ export async function handlePackagePost(
         if (data && data.Content && data.URL) {
             return {
                 statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
                 body: JSON.stringify({
                     error: "Both Content and URL cannot be set",
                 }),
@@ -80,17 +90,27 @@ export async function handlePackagePost(
                     const URL = await extractPackageJsonUrl(data.Content);
                     version = await extractVersionFromPackageJson(data.Content);
                     name = `${data.Name}`;
-                    const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
+                    const fileName = `${data.Name}${version.replace(
+                        /\./g,
+                        ""
+                    )}.zip`;
                     if (URL != null) {
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
                             s3Url = await uploadToS3(contentToUpload, fileName);
                             url = URL;
-                            version = await extractVersionFromPackageJson(data.Content);
-                        }
-                        else {
+                            version = await extractVersionFromPackageJson(
+                                data.Content
+                            );
+                        } else {
                             return {
                                 statusCode: 424,
+                                headers: {
+                                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                                    "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                                    "Access-Control-Allow-Headers":
+                                        "X-Authorization", // Allow the custom header
+                                },
                                 body: JSON.stringify({
                                     error: "Package is not uploaded due to the disqualified rating.",
                                 }),
@@ -110,7 +130,9 @@ export async function handlePackagePost(
                         version = await getRepositoryVersion(data.URL);
                     }
                     name = `${githubURL.split("/").pop()}`;
-                    const fileName = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}.zip`;
+                    const fileName = `${githubURL
+                        .split("/")
+                        .pop()}${version.replace(/\./g, "")}.zip`;
                     metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
                         zipBase64 = await uploadGithubRepoAsZipToS3(
@@ -118,10 +140,15 @@ export async function handlePackagePost(
                             fileName
                         );
                         url = githubURL;
-                    }
-                    else {
+                    } else {
                         return {
                             statusCode: 424,
+                            headers: {
+                                "Access-Control-Allow-Origin": "*", // Allow all origins
+                                "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                                "Access-Control-Allow-Headers":
+                                    "X-Authorization", // Allow the custom header
+                            },
                             body: JSON.stringify({
                                 error: "Package is not uploaded due to the disqualified rating.",
                             }),
@@ -154,13 +181,13 @@ export async function handlePackagePost(
             if (zipBase64 || s3Url) {
                 try {
                     const dynamoParams = {
-                        TableName: TABLE_NAME,  
+                        TableName: TABLE_NAME,
                         Item: {
                             ECEfoursixone: result.metadata.ID,
-                            Version: version,  
+                            Version: version,
                             URL: url,
                             JSProgram: data.JSProgram,
-                            Metrics: metricsResult       
+                            Metrics: metricsResult,
                         },
                     };
                     await dynamoDb.put(dynamoParams).promise();
@@ -169,9 +196,17 @@ export async function handlePackagePost(
                     console.error("Error storing metrics in DynamoDB:", error);
                     return {
                         statusCode: 500,
+                        headers: {
+                            "Access-Control-Allow-Origin": "*", // Allow all origins
+                            "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                            "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                        },
                         body: JSON.stringify({
                             error: "Failed to store metrics in DynamoDB",
-                            details: error instanceof Error ? error.message : String(error),
+                            details:
+                                error instanceof Error
+                                    ? error.message
+                                    : String(error),
                         }),
                     };
                 }
@@ -180,12 +215,23 @@ export async function handlePackagePost(
 
         return {
             statusCode: 201,
+            headers: {
+                "Access-Control-Allow-Origin": "*", // Allow all origins
+                "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+            },
             body: JSON.stringify(result),
         };
     } catch (error) {
         console.error("Error processing request:", error);
         return {
             statusCode: 500,
+
+            headers: {
+                "Access-Control-Allow-Origin": "*", // Allow all origins
+                "Access-Control-Allow-Methods": "POST", // Allow specific methods
+                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+            },
             body: JSON.stringify({
                 error: "An error occurred while processing the request",
                 details: error instanceof Error ? error.message : String(error),
@@ -195,7 +241,9 @@ export async function handlePackagePost(
 }
 
 // Handle the GET request for the package/{id} endpoint
-export async function handlePackageGet(id: string): Promise<APIGatewayProxyResult> {
+export async function handlePackageGet(
+    id: string
+): Promise<APIGatewayProxyResult> {
     console.log(`Handling GET request for package with ID: ${id}`);
 
     const packageData = await fetchPackageById(id);
@@ -204,6 +252,11 @@ export async function handlePackageGet(id: string): Promise<APIGatewayProxyResul
         console.warn(`Package with ID ${id} not found.`);
         return {
             statusCode: 404,
+            headers: {
+                "Access-Control-Allow-Origin": "*", // Allow all origins
+                "Access-Control-Allow-Methods": "GET", // Allow specific methods
+                "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+            },
             body: JSON.stringify({ error: "Package not found" }),
         };
     }
@@ -211,13 +264,22 @@ export async function handlePackageGet(id: string): Promise<APIGatewayProxyResul
     console.log(`Successfully retrieved package data for ID: ${id}`);
     return {
         statusCode: 200,
+        headers: {
+            "Access-Control-Allow-Origin": "*", // Allow all origins
+            "Access-Control-Allow-Methods": "GET", // Allow specific methods
+            "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+        },
         body: JSON.stringify(packageData),
     };
 }
 
-export async function handlePackageRate(id: string): Promise<APIGatewayProxyResult> {
+export async function handlePackageRate(
+    id: string
+): Promise<APIGatewayProxyResult> {
     try {
-        console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
+        console.log(
+            `Fetching metrics for package with ID: ${id} from DynamoDB`
+        );
 
         const dynamoResult = await dynamoDb
             .get({
@@ -225,8 +287,8 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
                 Key: { ECEfoursixone: id },
                 ProjectionExpression: "#metrics",
                 ExpressionAttributeNames: {
-                    "#metrics": "Metrics"
-                }
+                    "#metrics": "Metrics",
+                },
             })
             .promise();
 
@@ -234,7 +296,9 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
             console.warn(`No metrics found for package with ID: ${id}`);
             return {
                 statusCode: 404,
-                body: JSON.stringify({ error: "Metrics not found for this package" }),
+                body: JSON.stringify({
+                    error: "Metrics not found for this package",
+                }),
             };
         }
 
@@ -246,7 +310,10 @@ export async function handlePackageRate(id: string): Promise<APIGatewayProxyResu
             body: JSON.stringify({ PackageRating: metrics }),
         };
     } catch (error) {
-        console.error(`Error fetching metrics for package with ID ${id}:`, error);
+        console.error(
+            `Error fetching metrics for package with ID ${id}:`,
+            error
+        );
         return {
             statusCode: 500,
             body: JSON.stringify({
@@ -307,10 +374,8 @@ export async function handlePackageCost(
         }
 
         // Use GraphQL API to fetch size and dependencies
-        const { standaloneCost, totalCost, dependencies } = await fetchCostWithGraphQL(
-            repoUrl,
-            includeDependencies
-        );
+        const { standaloneCost, totalCost, dependencies } =
+            await fetchCostWithGraphQL(repoUrl, includeDependencies);
 
         // Write the package's cost data to the database
         await dynamoDb
