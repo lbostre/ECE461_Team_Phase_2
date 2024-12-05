@@ -1,11 +1,11 @@
 import { minify } from "terser";
-import { BUCKET_NAME, s3 } from "../../index.js";
 import { Package, PackageData } from "../../types.js";
 import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
-import AWS from 'aws-sdk';
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+import { Readable } from 'stream';
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 const TABLE_NAME = 'ECE461_Database';
 
 // create result
@@ -24,37 +24,47 @@ export const createPackageService = async (
 // Function to upload content to S3
 export const uploadToS3 = async (
     content: string,
-    fileName: string
+    fileName: string,
+    s3Client: S3Client,
+    bucketName: string
 ): Promise<string> => {
     const params = {
-        Bucket: BUCKET_NAME,
+        Bucket: bucketName,
         Key: `packages/${fileName}`, // file path in S3
         Body: content,
         ContentType: "application/octet-stream", // Adjust content type based on your needs
     };
 
     console.log(`Uploading file to S3: ${fileName}`);
-    const data = await s3.upload(params).promise();
-    console.log(`File uploaded successfully. S3 URL: ${data.Location}`);
-    return data.Location;
+    const command = new PutObjectCommand(params);
+    const data = await s3Client.send(command);
+    console.log(`File uploaded successfully.`);
+    return `https://${bucketName}.s3.amazonaws.com/packages/${fileName}`;
 };
 
 // Function to download a file from S3 and save it to local storage
 export const downloadAndSaveFromS3 = async (
     fileName: string,
-    localPath: string
+    localPath: string,
+    s3Client: S3Client,
+    bucketName: string
 ): Promise<void> => {
     const params = {
-        Bucket: BUCKET_NAME,
+        Bucket: bucketName,
         Key: `packages/${fileName}`, // Adjust the key if your file is in a different path
     };
 
     try {
         console.log(`Downloading file from S3: ${fileName}`);
-        const data = await s3.getObject(params).promise();
+        const command = new GetObjectCommand(params);
+        const data = await s3Client.send(command);
 
         // Save the downloaded file to local storage
-        fs.writeFileSync(localPath, data.Body as Buffer);
+        if (!data.Body) {
+            throw new Error("S3 object body is undefined");
+        }
+        const body = await streamToBuffer(data.Body);
+        fs.writeFileSync(localPath, body);
         console.log(`File saved locally as ${localPath}`);
     } catch (error) {
         if (error instanceof Error) {
@@ -66,9 +76,23 @@ export const downloadAndSaveFromS3 = async (
     }
 };
 
+// Helper function to convert stream to buffer
+const streamToBuffer = async (stream: ReadableStream | Blob | Readable | null): Promise<Buffer> => {
+    if (!stream) {
+        throw new Error("Stream is null or undefined");
+    }
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+};
+
 export async function uploadGithubRepoAsZipToS3(
     githubRepoUrl: string,
-    fileName: string
+    fileName: string,
+    s3Client: S3Client,
+    bucketName: string
 ): Promise<string> {
     try {
         console.log(`Starting uploadGithubRepoAsZipToS3 function.`);
@@ -99,15 +123,16 @@ export async function uploadGithubRepoAsZipToS3(
 
         // Upload the base64 string to S3
         const params = {
-            Bucket: BUCKET_NAME,
+            Bucket: bucketName,
             Key: `packages/${fileName}`, // file path in S3
             Body: zipBase64,
             ContentType: "application/octet-stream", // Adjust content type based on your needs
         };
 
         console.log(`Uploading file to S3: ${fileName}`);
-        const data = await s3.upload(params).promise();
-        console.log(`File uploaded successfully. S3 URL: ${data.Location}`);
+        const command = new PutObjectCommand(params);
+        const data = await s3Client.send(command);
+        console.log(`File uploaded successfully.`);
 
         return zipBase64; // Return the uploaded file URL
     } catch (error) {
@@ -248,15 +273,16 @@ export async function extractVersionFromPackageJson(contentBase64: string): Prom
     return packageJson.version || "1.0.0";
 }
 
-export async function fetchPackageById(id: string): Promise<Package | null> {
+export async function fetchPackageById(id: string, dynamoDbClient: DynamoDBClient, s3Client: S3Client, bucketName: string): Promise<Package | null> {
     console.log(`Fetching package metadata from DynamoDB for ID: ${id}`);
 
     // Step 1: Fetch Version and URL from DynamoDB
     try {
-        const dynamoResult = await dynamoDb.get({
+        const command = new GetItemCommand({
             TableName: TABLE_NAME,
-            Key: { ECEfoursixone: id },
-        }).promise();
+            Key: { ECEfoursixone: { S: id } },
+        });
+        const dynamoResult = await dynamoDbClient.send(command);
 
         if (!dynamoResult.Item) {
             console.error(`No metadata found in DynamoDB for ID: ${id}`);
@@ -264,29 +290,33 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
         }
 
         const { Version, URL, JSProgram } = dynamoResult.Item;
-        console.log(`Retrieved Version: ${Version}, URL: ${URL} from DynamoDB for ID: ${id}`);
+        const urlString = URL.S || "";
+        console.log(`Retrieved Version: ${Version}, URL: ${urlString} from DynamoDB for ID: ${id}`);
 
         const name = id.replace(/\d+$/, "");
 
         // Step 2: Fetch package content from S3
         const params = {
-            Bucket: BUCKET_NAME,
-            Key: `packages/${id}.zip`,
+            Bucket: bucketName,
+            Key: `packages/${id}.zip`
         };
-        const s3Data = await s3.getObject(params).promise();
-        const content = s3Data.Body?.toString("base64") || "";
+        const s3Command = new GetObjectCommand(params);
+        const s3Data = await s3Client.send(s3Command);
+        if (!s3Data.Body) {
+            throw new Error("S3 object body is undefined");
+        }
+        const content = await streamToBuffer(s3Data.Body).then(buffer => buffer.toString("base64"));
 
         // Step 3: Construct the package response
         const packageData: Package = {
             metadata: {
                 Name: name, // Extracts Name if ID includes Version
-                Version: Version,
+                Version: Version.S || "1.0.0",
                 ID: id,
             },
             data: {
-                Content: content,
-                URL: URL,
-                JSProgram: JSProgram,
+                URL: URL.S || "",
+                JSProgram: JSProgram.S || "",
             },
         };
 

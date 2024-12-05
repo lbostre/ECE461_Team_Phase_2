@@ -1,5 +1,5 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
-import AWS from "aws-sdk";
+import { S3Client } from "@aws-sdk/client-s3";
 import {
     handlePackagePost,
     handlePackageGet,
@@ -12,9 +12,13 @@ import {
     registerUser,
     deleteUser,
 } from "./src/util/authUtil.js";
-// Initialize S3 client
-export const s3 = new AWS.S3();
-export const BUCKET_NAME = "ece461phase2";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+// Initialize S3 and DynamoDB clients
+const s3Client = new S3Client({ region: "us-east-1" });
+const dynamoDbClient = new DynamoDBClient({ region: "us-east-1" });
+const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 
 async function extractAndValidateToken(
     event: APIGatewayEvent
@@ -35,62 +39,31 @@ export const handler = async (
 
     const { httpMethod, path, pathParameters, body, headers } = event;
 
-    //Get Auth Token
+    // Get Auth Token
     if (path === "/authenticate" && httpMethod === "PUT") {
-        return handleAuthenticate(body);
+        return handleAuthenticate(body, dynamoDbDocumentClient);
     }
 
-    if (path === "/package" && httpMethod === "POST") {
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
-            return {
-                statusCode: 403,
-                headers: {
-                    "Access-Control-Allow-Origin": "*", // Allow all origins
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
-                },
-                body: JSON.stringify({
-                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
-                }),
-            };
-        }
-        return handlePackagePost(body);
+    const id = pathParameters?.id;
+
+    // /package/{id}/rate
+    if (path === `/package/${id}/rate`) {
+        return handlePackageRate(id, dynamoDbDocumentClient);
+    }
+    // /package/{id}
+    else if (path === `/package/${id}`) {
+        return handlePackageGet(id, dynamoDbDocumentClient);
+    }
+    // /package/{id}/cost
+    else if (path === `/package/${id}/cost`) {
+        return handlePackageCost(
+            id,
+            event.queryStringParameters?.dependency === "true",
+            dynamoDbDocumentClient
+        );
     }
 
-    // Handle GET request to /package/{id}
-    if (httpMethod === "GET" && pathParameters && pathParameters.id) {
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
-            return {
-                statusCode: 403,
-                headers: {
-                    "Access-Control-Allow-Origin": "*", // Allow all origins
-                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
-                },
-                body: JSON.stringify({
-                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
-                }),
-            };
-        }
-        const id = pathParameters.id;
-        // /package/{id}/rate
-        if (path === `/package/${id}/rate`) {
-            return handlePackageRate(id);
-        }
-        // /package/{id}
-        else if (path === `/package/${id}`) {
-            return handlePackageGet(id);
-        }
-        // /package/{id}/cost
-        else if (path === `/package/${id}/cost`) {
-            return handlePackageCost(
-                id,
-                event.queryStringParameters?.dependency === "true"
-            );
-        }
-    }
-
-    //Register a User
+    // Register a User
     if (path === "/users" && httpMethod === "POST") {
         const authToken =
             headers["X-Authorization"] || headers["x-authorization"];
@@ -102,7 +75,7 @@ export const handler = async (
                 }),
             };
         }
-        const isValidToken = await extractAndValidateToken(event);
+        const isValidToken = await validateToken(authToken, dynamoDbDocumentClient);
         if (!isValidToken) {
             return {
                 statusCode: 403,
@@ -111,8 +84,37 @@ export const handler = async (
                 }),
             };
         }
-        const newUser = body ? JSON.parse(body) : null;
-        return registerUser(authToken, newUser);
+        if (!body) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: "Request body is missing." }),
+            };
+        }
+
+        let newUser;
+        try {
+            newUser = JSON.parse(body);
+        } catch (error) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: "Invalid JSON format." }),
+            };
+        }
+
+        if (
+            !newUser.name ||
+            !newUser.password ||
+            typeof newUser.isAdmin !== "boolean" ||
+            !Array.isArray(newUser.permissions) ||
+            !newUser.group
+        ) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: "Invalid user data." }),
+            };
+        }
+
+        return registerUser(authToken, newUser, dynamoDbDocumentClient);
     }
 
     //Delete a User

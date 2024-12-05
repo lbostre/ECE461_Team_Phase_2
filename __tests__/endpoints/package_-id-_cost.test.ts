@@ -13,11 +13,11 @@ beforeAll(async () => {
     headers: {},
     body: JSON.stringify({
       User: {
-        name: 'testadminuser',
+        name: 'testuser',
         isAdmin: true
       },
       Secret: {
-        password: 'supersecretpassword'
+        password: 'securepassword'
       }
     }),
     queryStringParameters: null,

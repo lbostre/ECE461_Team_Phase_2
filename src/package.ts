@@ -13,15 +13,19 @@ import {
 } from "./util/packageUtils.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import AWS from "aws-sdk";
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+import { DynamoDBClient, PutItemCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { PutCommand, GetCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { S3Client } from "@aws-sdk/client-s3";
+
 const TABLE_NAME = "ECE461_Database";
 
 const API_URL =
     "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package";
 
 export async function handlePackagePost(
-    body: any
+    body: any,
+    dynamoDbClient: DynamoDBClient,
+    s3Client: S3Client
 ): Promise<APIGatewayProxyResult> {
     if (!body) {
         return {
@@ -190,7 +194,7 @@ export async function handlePackagePost(
                             Metrics: metricsResult,
                         },
                     };
-                    await dynamoDb.put(dynamoParams).promise();
+                    await dynamoDbClient.send(new PutCommand(dynamoParams));
                     console.log("Metrics successfully stored in DynamoDB.");
                 } catch (error) {
                     console.error("Error storing metrics in DynamoDB:", error);
@@ -226,7 +230,6 @@ export async function handlePackagePost(
         console.error("Error processing request:", error);
         return {
             statusCode: 500,
-
             headers: {
                 "Access-Control-Allow-Origin": "*", // Allow all origins
                 "Access-Control-Allow-Methods": "POST", // Allow specific methods
@@ -274,23 +277,22 @@ export async function handlePackageGet(
 }
 
 export async function handlePackageRate(
-    id: string
+    id: string,
+    dynamoDbClient: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
         console.log(
             `Fetching metrics for package with ID: ${id} from DynamoDB`
         );
 
-        const dynamoResult = await dynamoDb
-            .get({
-                TableName: TABLE_NAME,
-                Key: { ECEfoursixone: id },
-                ProjectionExpression: "#metrics",
-                ExpressionAttributeNames: {
-                    "#metrics": "Metrics",
-                },
-            })
-            .promise();
+        const dynamoResult = await dynamoDbClient.send(new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { ECEfoursixone: id },
+            ProjectionExpression: "#metrics",
+            ExpressionAttributeNames: {
+                "#metrics": "Metrics",
+            },
+        }));
 
         if (!dynamoResult.Item) {
             console.warn(`No metrics found for package with ID: ${id}`);
@@ -318,7 +320,6 @@ export async function handlePackageRate(
             statusCode: 500,
             body: JSON.stringify({
                 error: "Failed to fetch metrics",
-                details: error instanceof Error ? error.message : String(error),
             }),
         };
     }
@@ -326,16 +327,15 @@ export async function handlePackageRate(
 
 export async function handlePackageCost(
     id: string,
-    includeDependencies: boolean
+    includeDependencies: boolean,
+    dynamoDbClient: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if cost data exists in the Cost Table
-        const costData = await dynamoDb
-            .get({
-                TableName: "ECE461_CostTable",
-                Key: { packageID: id },
-            })
-            .promise();
+        const costData = await dynamoDbClient.send(new GetCommand({
+            TableName: "ECE461_CostTable",
+            Key: { packageID: id },
+        }));
 
         if (costData.Item) {
             const { standaloneCost, totalCost } = costData.Item;
@@ -350,12 +350,10 @@ export async function handlePackageCost(
         }
 
         // Fetch package data from the main table
-        const packageData = await dynamoDb
-            .get({
-                TableName: "ECE461_Database",
-                Key: { ECEfoursixone: id },
-            })
-            .promise();
+        const packageData = await dynamoDbClient.send(new GetCommand({
+            TableName: "ECE461_Database",
+            Key: { ECEfoursixone: id },
+        }));
 
         if (!packageData.Item) {
             return {
@@ -378,29 +376,25 @@ export async function handlePackageCost(
             await fetchCostWithGraphQL(repoUrl, includeDependencies);
 
         // Write the package's cost data to the database
-        await dynamoDb
-            .put({
-                TableName: "ECE461_CostTable",
-                Item: {
-                    packageID: id,
-                    standaloneCost,
-                    totalCost,
-                },
-            })
-            .promise();
+        await dynamoDbClient.send(new PutCommand({
+            TableName: "ECE461_CostTable",
+            Item: {
+                packageID: id,
+                standaloneCost,
+                totalCost,
+            },
+        }));
 
         // Write dependency costs to the database
         for (const [dependencyId, costData] of Object.entries(dependencies)) {
-            await dynamoDb
-                .put({
-                    TableName: "ECE461_CostTable",
-                    Item: {
-                        packageID: dependencyId,
-                        standaloneCost: costData.standaloneCost,
-                        totalCost: costData.totalCost,
-                    },
-                })
-                .promise();
+            await dynamoDbClient.send(new PutCommand({
+                TableName: "ECE461_CostTable",
+                Item: {
+                    packageID: dependencyId,
+                    standaloneCost: costData.standaloneCost,
+                    totalCost: costData.totalCost,
+                },
+            }));
         }
 
         // Construct the response
