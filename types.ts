@@ -54,3 +54,8 @@ export interface AuthenticationRequest {
         password: string;
     };
 }
+
+export interface PackageQuery {
+    Name: string;
+    Version: string;
+}

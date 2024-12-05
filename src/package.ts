@@ -1,5 +1,5 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import { RepoDataResult } from "../types.js";
+import { PackageQuery, RepoDataResult } from "../types.js";
 import {
     performDebloat,
     uploadToS3,
@@ -238,7 +238,6 @@ export async function handlePackagePost(
     }
 }
 
-// Handle the GET request for the package/{id} endpoint
 export async function handlePackageGet(
     id: string,
     dynamoDb: DynamoDBDocumentClient,
@@ -550,11 +549,6 @@ export async function handlePackageUpdate(
             }),
         };
     }
-}
-
-interface PackageQuery {
-    Name: string;
-    Version: string;
 }
 
 export const handlePackagesList = async (
