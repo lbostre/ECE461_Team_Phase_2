@@ -5,6 +5,7 @@ import {
     handlePackageGet,
     handlePackageRate,
     handlePackageCost,
+    handlePackageUpdate,
 } from "./src/package.js";
 import {
     validateToken,
@@ -34,6 +35,18 @@ export const handler = async (
     console.log("Received event:", JSON.stringify(event, null, 2));
 
     const { httpMethod, path, pathParameters, body, headers } = event;
+
+    if (httpMethod === "OPTIONS") {
+        return {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+            },
+            body: "",
+        };
+    }
 
     //Get Auth Token
     if (path === "/authenticate" && httpMethod === "PUT") {
@@ -87,6 +100,27 @@ export const handler = async (
                 id,
                 event.queryStringParameters?.dependency === "true"
             );
+        }
+    }
+
+    if (httpMethod === "POST" && pathParameters && pathParameters.id) {
+        const isValidToken = await extractAndValidateToken(event);
+        if (!isValidToken) {
+            return {
+                statusCode: 403,
+                headers: {
+                    "Access-Control-Allow-Origin": "*", // Allow all origins
+                    "Access-Control-Allow-Headers": "X-Authorization", // Allow the custom header
+                },
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const id = pathParameters.id;
+        const body = event.body;
+        if (path === `/package/${id}` && body) {
+            return handlePackageUpdate(id, body);
         }
     }
 
