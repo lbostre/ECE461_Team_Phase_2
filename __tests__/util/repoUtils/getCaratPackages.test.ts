@@ -1,4 +1,4 @@
-// Test getCaratPackages function
+// __tests__/util/packageUtils/getCaratPackages.test.ts
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
@@ -9,9 +9,6 @@ import semver from 'semver';
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
-// Mock semver
-vi.mock('semver');
-
 describe('getCaratPackages', () => {
   const tableName = 'ECE461_Database';
   const name = 'examplePackage';
@@ -20,14 +17,17 @@ describe('getCaratPackages', () => {
   const mockItems = [
     {
       ECEfoursixone: 'examplePackage100',
+      Name: 'examplePackage',
       Version: '1.0.0',
     },
     {
       ECEfoursixone: 'examplePackage150',
+      Name: 'examplePackage',
       Version: '1.5.0',
     },
     {
       ECEfoursixone: 'examplePackage200',
+      Name: 'examplePackage',
       Version: '2.0.0',
     },
   ];
@@ -42,11 +42,10 @@ describe('getCaratPackages', () => {
   });
 
   it('should return packages within the carat range', async () => {
-    vi.mocked(semver.validRange).mockReturnValue('>=1.0.0 <2.0.0');
     ddbMock.on(ScanCommand).resolves(mockResponse);
 
     const result = await getCaratPackages(name, version, ddbMock as unknown as DynamoDBDocumentClient);
-
+    console.log(result);
     expect(result).toEqual([
       { Version: '1.0.0', Name: 'examplePackage', ID: 'examplePackage100' },
       { Version: '1.5.0', Name: 'examplePackage', ID: 'examplePackage150' },
@@ -63,7 +62,6 @@ describe('getCaratPackages', () => {
   });
 
   it('should return an empty array if no packages are found', async () => {
-    vi.mocked(semver.validRange).mockReturnValue('>=1.0.0 <2.0.0');
     ddbMock.on(ScanCommand).resolves({ Items: [] });
 
     const result = await getCaratPackages(name, version, ddbMock as unknown as DynamoDBDocumentClient);
@@ -81,15 +79,14 @@ describe('getCaratPackages', () => {
   });
 
   it('should throw an error if the version format is invalid', async () => {
-    vi.mocked(semver.validRange).mockReturnValue(null);
+    const invalidVersion = 'invalid-version';
 
-    await expect(getCaratPackages(name, version, ddbMock as unknown as DynamoDBDocumentClient)).rejects.toThrow('Invalid version format for carat range');
+    await expect(getCaratPackages(name, invalidVersion, ddbMock as unknown as DynamoDBDocumentClient)).rejects.toThrow('Invalid version format for carat range');
 
     expect(ddbMock.commandCalls(ScanCommand).length).toBe(0);
   });
 
   it('should throw an error if DynamoDB scan fails', async () => {
-    vi.mocked(semver.validRange).mockReturnValue('>=1.0.0 <2.0.0');
     ddbMock.on(ScanCommand).rejects(new Error('DynamoDB error'));
 
     await expect(getCaratPackages(name, version, ddbMock as unknown as DynamoDBDocumentClient)).rejects.toThrow('Could not query carat packages.');
