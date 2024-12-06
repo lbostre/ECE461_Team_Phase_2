@@ -620,6 +620,9 @@ export const getTildePackages = async (
             ID: item.ECEfoursixone
         }));
     } catch (error) {
+        if (error.message === "Invalid version format for tilde range") {
+            throw error;
+        }
         console.error("Error querying tilde packages:", error);
         throw new Error("Could not query tilde packages.");
     }
