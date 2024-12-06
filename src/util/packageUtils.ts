@@ -223,7 +223,7 @@ export async function extractPackageJsonUrl(contentBase64: string): Promise<stri
     return getRepositoryUrlFromPackageJson(packageJson);
 }
 
-function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
+export function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
     const repository = packageJson?.repository;
 
     if (!repository) return null;
