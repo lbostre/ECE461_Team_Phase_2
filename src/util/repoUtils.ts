@@ -85,22 +85,22 @@ export async function findReadme(repoPath: string) {
 
 export async function findLicense(repoPath: string, readme: string | null) {
     const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
-    for (const entry of entries) {
-        if (entry.isFile() && entry.name.toLowerCase().startsWith('license')) {
-            const licenseContent = await fs.promises.readFile(path.join(repoPath, entry.name), 'utf8');
-            return identifyLicense(licenseContent);
-        }
-    }
     const packageJsonPath = path.join(repoPath, 'package.json');
     if (entries.some(entry => entry.name === 'package.json')) {
         try {
             const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
             const packageJson = JSON.parse(packageJsonContent);
             if (packageJson.license) {
-                return packageJson.license;
+                return identifyLicense(packageJson.license);
             }
         } catch (error) {
             console.error("Error reading or parsing package.json:", error);
+        }
+    }
+    for (const entry of entries) {
+        if (entry.isFile() && entry.name.toLowerCase().startsWith('license')) {
+            const licenseContent = await fs.promises.readFile(path.join(repoPath, entry.name), 'utf8');
+            return identifyLicense(licenseContent);
         }
     }
     if (!readme) {
