@@ -264,23 +264,32 @@ export async function handlePackageGet(
 ): Promise<APIGatewayProxyResult> {
     console.log(`Handling GET request for package with ID: ${id}`);
 
-    const packageData = await fetchPackageById(id, dynamoDb, s3Client, bucketName);
+    try {
+        const packageData = await fetchPackageById(id, dynamoDb, s3Client, bucketName);
 
-    if (!packageData) {
-        console.warn(`Package with ID ${id} not found.`);
+        if (!packageData) {
+            console.warn(`Package with ID ${id} not found.`);
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Package not found" }),
+            };
+        }
+
+        console.log(`Successfully retrieved package data for ID: ${id}`);
         return {
-            statusCode: 404,
+            statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify({ error: "Package not found" }),
+            body: JSON.stringify(packageData),
+        };
+    } catch (error) {
+        console.error(`Error fetching package with ID ${id}:`, error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Internal Server Error" }),
         };
     }
-
-    console.log(`Successfully retrieved package data for ID: ${id}`);
-    return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(packageData),
-    };
 }
 
 export async function handlePackageRate(
