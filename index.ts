@@ -243,19 +243,27 @@ export const handler = async (
     }
 
     if (path === '/reset' && httpMethod === 'DELETE') {
-        const validation = await extractAndValidateToken(event);
-        if (!validation.isValid) {
+        try {
+            const validation = await validateToken(headers['X-Authorization']);
+            if (!validation.isValid) {
+                return {
+                    statusCode: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                    }),
+                };
+            }
+            return await handleReset(headers['X-Authorization'], dynamoDb);
+        } catch (error) {
+            console.error("Error processing request:", error);
             return {
-                statusCode: 403,
-                headers: corsHeaders,
+                statusCode: 500,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                    error: "Internal Server Error",
                 }),
             };
-        }
-        const authToken = headers["X-Authorization"] || headers["x-authorization"];
-        if (authToken) {
-            return handleReset(authToken, dynamoDb);
         }
     }
 

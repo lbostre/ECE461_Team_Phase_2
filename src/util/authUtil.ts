@@ -391,7 +391,7 @@ export async function handleReset(
 }
 
 // Helper function to clear a table
-async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentClient): Promise<void> {
+export async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentClient): Promise<void> {
     try {
         let items;
         do {
