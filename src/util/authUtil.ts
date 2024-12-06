@@ -414,3 +414,46 @@ export async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentCl
         throw error;
     }
 }
+
+export async function getUserInfo(authToken: string, dynamoDb: DynamoDBDocumentClient) {
+    try {
+        const token = authToken.replace("bearer ", "").trim();
+        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+
+        // Verify if the decoded token contains a valid name
+        if (!decoded || !decoded.name) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            };
+        }
+
+        // Fetch the user data from DynamoDB using the username
+        const result = await dynamoDb.send(new GetCommand({
+            TableName: USER_TABLE_NAME,
+            Key: { username: decoded.name },
+        }));
+
+        if (!result.Item) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "User not found." }),
+            };
+        }
+
+        const user = result.Item;
+        return user;
+    } catch (error) {
+        console.error("Error resetting the registry:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "Internal Server Error",
+                details: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}

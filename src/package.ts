@@ -17,7 +17,7 @@ import {
     getAllPackages,
     fetchReadmesBatch,
 } from "./util/packageUtils.js";
-import { getGroups } from "./util/authUtil.js";
+import { getGroups, getUserInfo } from "./util/authUtil.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
 import { PutCommand, GetCommand, DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
@@ -201,6 +201,9 @@ export async function handlePackagePost(
             }
         }
 
+        const userData = await getUserInfo(authToken, dynamoDb);
+        const currentTime = new Date().toISOString();
+
         if (metricsResult && metricsResult.NetScore >= 0.5) {
             if (zipBase64 || s3Url) {
                 try {
@@ -212,7 +215,10 @@ export async function handlePackagePost(
                             URL: url,
                             JSProgram: data.JSProgram,
                             Metrics: metricsResult,
+                            UploadedBy: userData.username,
+                            UploadedAt: currentTime,
                             Group: group,
+                            DownloadInfo: [],
                         },
                     };
                     await dynamoDb.send(new PutCommand(dynamoParams));
@@ -268,12 +274,13 @@ export async function handlePackageGet(
     id: string,
     dynamoDb: DynamoDBDocumentClient,
     s3Client: S3Client,
-    bucketName: string
+    bucketName: string,
+    authToken: string
 ): Promise<APIGatewayProxyResult> {
     console.log(`Handling GET request for package with ID: ${id}`);
 
     try {
-        const packageData = await fetchPackageById(id, dynamoDb, s3Client, bucketName);
+        const packageData = await fetchPackageById(id, dynamoDb, s3Client, bucketName, authToken);
 
         if (!packageData) {
             console.warn(`Package with ID ${id} not found.`);
@@ -567,6 +574,9 @@ export async function handlePackageUpdate(
             }
         }
 
+        const userData = await getUserInfo(authToken, dynamoDb);
+        const currentTime = new Date().toISOString();
+
         // Store the new version in the database
         const newPackage = {
             ECEfoursixone: metadata.ID, // New unique ID for the new version
@@ -574,7 +584,10 @@ export async function handlePackageUpdate(
             URL: data.URL || null,
             JSProgram: data.JSProgram || null,
             Metrics: metricsResult,
+            UploadedBy: userData.username,
+            UploadedAt: currentTime,
             Group: group, // Add group if Secret was true
+            DownloadInfo: [],
         };
 
         const putCommand = new PutCommand({

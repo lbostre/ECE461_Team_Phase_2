@@ -161,12 +161,12 @@ export const handler = async (
         }
     
         const id = pathParameters.id;
-    
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
         // Handle specific routes
         if (path === `/package/${id}/rate`) {
             return handlePackageRate(id, dynamoDb);
-        } else if (path === `/package/${id}`) {
-            return handlePackageGet(id, dynamoClient, s3Client, BUCKET_NAME);
+        } else if (path === `/package/${id}` && authToken) {
+            return handlePackageGet(id, dynamoClient, s3Client, BUCKET_NAME, authToken);
         } else if (path === `/package/${id}/cost`) {
             return handlePackageCost(id, event.queryStringParameters?.dependency === "true", dynamoDb);
         }

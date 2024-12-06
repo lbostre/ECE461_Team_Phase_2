@@ -4,9 +4,10 @@ import fs from "fs";
 import axios from "axios";
 import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import semver from "semver";
+import { getUserInfo } from "./authUtil.js";
 const TABLE_NAME = 'ECE461_Database';
 
 // create result
@@ -282,11 +283,21 @@ export async function fetchPackageById(
     id: string,
     dynamoDb: DynamoDBDocumentClient,
     s3Client: S3Client,
-    bucketName: string
+    bucketName: string,
+    authToken: string // Pass authToken to get user info
 ): Promise<Package | null> {
     console.log(`Fetching package metadata from DynamoDB for ID: ${id}`);
 
     try {
+        // Fetch user info
+        const userInfo = await getUserInfo(authToken, dynamoDb);
+        if (!userInfo || typeof userInfo === "object" && "statusCode" in userInfo) {
+            console.error("Failed to fetch user information:", userInfo);
+            throw new Error("User information could not be retrieved.");
+        }
+
+        const username = userInfo.username;
+
         // Fetch metadata from DynamoDB
         const command = new GetCommand({
             TableName: TABLE_NAME,
@@ -299,12 +310,35 @@ export async function fetchPackageById(
             return null;
         }
 
-        const { Version, URL, JSProgram } = dynamoResult.Item;
+        const { Version, URL, JSProgram, DownloadInfo } = dynamoResult.Item;
         console.log(`Retrieved metadata from DynamoDB:`, {
             Version,
             URL,
             JSProgram,
+            DownloadInfo,
         });
+
+        // Update the `DownloadInfo` attribute in DynamoDB
+        const downloadEvent = {
+            user: username,
+            timestamp: new Date().toISOString(),
+        };
+        const updatedDownloadInfo = Array.isArray(DownloadInfo)
+            ? [...DownloadInfo, downloadEvent]
+            : [downloadEvent];
+
+        await dynamoDb.send(
+            new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: { ECEfoursixone: id },
+                UpdateExpression: "SET DownloadInfo = :downloadInfo",
+                ExpressionAttributeValues: {
+                    ":downloadInfo": updatedDownloadInfo,
+                },
+            })
+        );
+
+        console.log(`Updated DownloadInfo for package ID ${id}:`, updatedDownloadInfo);
 
         // Fetch package content from S3
         const params = {
