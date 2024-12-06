@@ -259,11 +259,13 @@ export async function handleGetUser(
                 body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
             };
         }
+
         // Fetch the user data from DynamoDB using the username
         const result = await dynamoDb.send(new GetCommand({
             TableName: USER_TABLE_NAME,
             Key: { username: decoded.name },
         }));
+
         if (!result.Item) {
             return {
                 statusCode: 404,
@@ -271,6 +273,7 @@ export async function handleGetUser(
                 body: JSON.stringify({ error: "User not found." }),
             };
         }
+
         const user = result.Item;
         return {
             statusCode: 200,
@@ -278,7 +281,7 @@ export async function handleGetUser(
             body: JSON.stringify({
                 User: {
                     name: user.username,
-                    password: user.password, 
+                    password: user.password,
                     isAdmin: user.isAdmin,
                     permissions: user.permissions,
                     group: user.group,
@@ -286,6 +289,13 @@ export async function handleGetUser(
             }),
         };
     } catch (error) {
+        if (error instanceof jwt.JsonWebTokenError) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            };
+        }
         console.error("Error fetching user data:", error);
         return {
             statusCode: 500,
