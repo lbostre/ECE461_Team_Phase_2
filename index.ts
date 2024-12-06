@@ -9,6 +9,7 @@ import {
     handlePackageCost,
     handlePackageUpdate,
     handlePackagesList,
+    handlePackageByRegEx,
 } from "./src/package.js";
 import {
     validateToken,
@@ -95,6 +96,20 @@ export const handler = async (
         if (authToken) {
             return handlePackagePost(body, s3Client, dynamoDb, authToken);
         }
+    }
+
+    if (path === `/package/byRegEx` && httpMethod === 'POST') {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        return handlePackageByRegEx(body, dynamoDb);
     }
 
     if (httpMethod === "GET") {

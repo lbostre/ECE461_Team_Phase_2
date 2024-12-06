@@ -15,11 +15,12 @@ import {
     getBoundedRangePackages,
     getExactPackage,
     getAllPackages,
+    fetchReadmesBatch,
 } from "./util/packageUtils.js";
 import { getGroups } from "./util/authUtil.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import { PutCommand, GetCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, GetCommand, DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 import semver from "semver";
 
@@ -608,6 +609,7 @@ export const handlePackagesList = async (
     if (!body) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "There is missing field(s) in the PackageQuery or it is formed improperly, or is invalid.",
             }),
@@ -620,6 +622,7 @@ export const handlePackagesList = async (
     } catch (error) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "Invalid JSON in request body.",
             }),
@@ -629,6 +632,7 @@ export const handlePackagesList = async (
     if (!Array.isArray(packagesQuery) || packagesQuery.length === 0) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "There is missing field(s) in the PackageQuery or it is formed improperly, or is invalid.",
             }),
@@ -703,3 +707,105 @@ export const handlePackagesList = async (
         body: JSON.stringify(paginatedResults),
     };
 };
+
+export async function handlePackageByRegEx(
+    body: any,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<any> {
+    try {
+        if (!body) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageRegEx or it is formed improperly, or is invalid.",
+                }),
+            };
+        }
+
+        const parsedBody = typeof body === "string" ? JSON.parse(body) : body;
+
+        if (!parsedBody.RegEx || typeof parsedBody.RegEx !== "string") {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageRegEx or it is formed improperly, or is invalid.",
+                }),
+            };
+        }
+
+        // Compile the regular expression
+        let regexPattern: RegExp;
+        try {
+            regexPattern = new RegExp(parsedBody.RegEx, "i");
+        } catch (error) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "The provided RegEx pattern is invalid.",
+                }),
+            };
+        }
+
+        // Scan the DynamoDB table for all packages
+        const params = {
+            TableName: "ECE461_Database",
+        };
+
+        const command = new ScanCommand(params);
+        const response = await dynamoDb.send(command);
+
+        const items = response.Items || [];
+
+        // Extract GitHub URLs from database entries
+        const githubUrls = items
+            .filter((item: any) => item.URL)
+            .map((item: any) => item.URL);
+
+        // Fetch README content for all GitHub URLs in a batch
+        let readmeContent: Record<string, string> = {};
+        if (githubUrls.length > 0) {
+            readmeContent = await fetchReadmesBatch(githubUrls);
+        }
+
+        // Filter packages based on RegEx match on names or README content
+        const results = items
+            .filter((item: any) => {
+                const packageName = item.ECEfoursixone;
+                const githubUrl = item.URL;
+                const readmeText = readmeContent[githubUrl] || "";
+
+                return regexPattern.test(packageName) || regexPattern.test(readmeText);
+            })
+            .map((item: any) => ({
+                Version: item.Version,
+                Name: item.ECEfoursixone,
+                ID: item.ECEfoursixone,
+            }));
+
+        // Handle no matches
+        if (results.length === 0) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "No package found under this regex." }),
+            };
+        }
+
+        // Return successful response with matching packages
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify(results),
+        };
+    } catch (error) {
+        console.error("Error handling /package/byRegEx:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Internal Server Error" }),
+        };
+    }
+}
