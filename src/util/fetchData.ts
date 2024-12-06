@@ -158,10 +158,10 @@ export async function fetchIssues(
     return { openIssues, closedIssues, issueDurations };
 }
 
-function extractOwnerAndRepo(url: string): { owner: string; repo: string } {
-    const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-    if (!match) {
-        throw new Error(`Invalid GitHub URL: ${url}`);
+function extractOwnerAndRepo(apiUrl: string) {
+    const match = apiUrl.match(/repos\/([^/]+)\/([^/]+)/);
+    if (!match || match.length < 3) {
+        throw new Error(`Invalid GitHub API URL: ${apiUrl}`);
     }
     return { owner: match[1], repo: match[2] };
 }
