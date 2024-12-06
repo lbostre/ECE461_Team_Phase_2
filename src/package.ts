@@ -645,7 +645,7 @@ export const handlePackagesList = async (
             results.push(...allPackages);
         } else if (query.Version && query.Name) {
             // Handle different version queries: Exact, Bounded Range, Carat, Tilde
-            if (query.Version.includes("Exact")) {
+            if (query.Version.toLowerCase().includes("exact".toLowerCase())) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const exactPackage = await getExactPackage(query.Name, version, dynamoDb);
@@ -660,16 +660,20 @@ export const handlePackagesList = async (
                     results.push(...boundedPackages);
                 }
             } else if (query.Version.toLowerCase().includes("carat".toLowerCase())) {
-                const version = query.Version.match(/\(([^)]+)\)/)?.[1];
+                const version = query.Version.match(/\(([^)]+)\)/)?.[1]?.replace(/^\^+/, ""); 
                 if (version) {
                     const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
                     results.push(...caratPackages);
+                } else {
+                    console.warn("Invalid Carat version format:", query.Version);
                 }
             } else if (query.Version.toLowerCase().includes("tilde".toLowerCase())) {
-                const version = query.Version.match(/\(([^)]+)\)/)?.[1];
+                const version = query.Version.match(/\(([^)]+)\)/)?.[1]?.replace(/^~+/, ""); 
                 if (version) {
                     const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
                     results.push(...tildePackages);
+                } else {
+                    console.warn("Invalid Tilde version format:", query.Version);
                 }
             }
         } else {

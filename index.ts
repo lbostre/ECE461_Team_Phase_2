@@ -16,6 +16,7 @@ import {
     registerUser,
     deleteUser,
     handleGetUser,
+    handleReset,
 } from "./src/util/authUtil.js";
 // Initialize S3 client
 const s3Client = new S3Client({
@@ -224,6 +225,23 @@ export const handler = async (
             };
         }
         return deleteUser(authToken, pathParameters.id, dynamoDb);
+    }
+
+    if (path === '/reset' && httpMethod === 'DELETE') {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+        if (authToken) {
+            return handleReset(authToken, dynamoDb);
+        }
     }
 
     return {

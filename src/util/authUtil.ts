@@ -1,5 +1,5 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import jwt from "jsonwebtoken";
 import { AuthenticationRequest } from "../../types.js";
 
@@ -336,5 +336,81 @@ export async function getGroups(
     } catch (error) {
         console.error("Error retrieving group:", error);
         return null;
+    }
+}
+
+export async function handleReset(
+    authToken: string,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<APIGatewayProxyResult> {
+    try {
+        // Check if the user is an admin
+        const decoded = jwt.verify(authToken, JWT_SECRET) as jwt.JwtPayload;
+        if (!decoded.isAdmin) {
+            return {
+                statusCode: 401,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "You do not have permission to reset the registry." }),
+            };
+        }
+
+        await clearTable("ECE461_UsersTable", dynamoDb);
+        await clearTable("ECE461_PackagesTable", dynamoDb);
+        await clearTable("ECE461_CostsTable", dynamoDb);
+
+        const defaultAdmin = {
+            username: "ece30861defaultadminuser",
+            password: "correcthorsebatterystaple123(!__+@**(A'\"`;DROP TABLE packages;",
+            isAdmin: true,
+            permissions: ["search", "upload", "download"],
+            callCount: 0,
+            expiresAt: Math.floor(Date.now() / 1000) + 10 * 60 * 60, 
+        };
+
+        await dynamoDb.send(new PutCommand({
+            TableName: "ECE461_UsersTable",
+            Item: defaultAdmin,
+        }));
+
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: "Registry is reset." }),
+        };
+    } catch (error) {
+        console.error("Error resetting the registry:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "Internal Server Error",
+                details: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}
+
+// Helper function to clear a table
+async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentClient): Promise<void> {
+    try {
+        let items;
+        do {
+            const scanCommand = new ScanCommand({ TableName: tableName });
+            const response = await dynamoDb.send(scanCommand);
+            items = response.Items;
+
+            if (items && items.length > 0) {
+                for (const item of items) {
+                    const deleteCommand = new DeleteCommand({
+                        TableName: tableName,
+                        Key: { username: item.username || item.ECEfoursixone }, // Adjust key based on table
+                    });
+                    await dynamoDb.send(deleteCommand);
+                }
+            }
+        } while (items && items.length > 0);
+    } catch (error) {
+        console.error(`Error clearing table ${tableName}:`, error);
+        throw error;
     }
 }
