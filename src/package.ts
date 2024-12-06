@@ -825,3 +825,55 @@ export async function handlePackageByRegEx(
         };
     }
 }
+
+export async function handlePackageHistory(
+    id: string,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<APIGatewayProxyResult> {
+    try {
+        // Fetch the package data from DynamoDB
+        const command = new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { ECEfoursixone: id },
+        });
+
+        const result = await dynamoDb.send(command);
+
+        // Check if the package exists
+        if (!result.Item) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Package not found.",
+                }),
+            };
+        }
+
+        // Extract the relevant data
+        const { UploadedBy, UploadedAt, DownloadInfo } = result.Item;
+
+        // Construct the response
+        const response = {
+            UploadedBy,
+            UploadedAt,
+            DownloadInfo: DownloadInfo || [], // Return an empty array if no downloads are present
+        };
+
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify(response),
+        };
+    } catch (error) {
+        console.error("Error fetching package history:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "Internal Server Error",
+                details: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}

@@ -10,6 +10,7 @@ import {
     handlePackageUpdate,
     handlePackagesList,
     handlePackageByRegEx,
+    handlePackageHistory,
 } from "./src/package.js";
 import {
     validateToken,
@@ -169,6 +170,8 @@ export const handler = async (
             return handlePackageGet(id, dynamoClient, s3Client, BUCKET_NAME, authToken);
         } else if (path === `/package/${id}/cost`) {
             return handlePackageCost(id, event.queryStringParameters?.dependency === "true", dynamoDb);
+        } else if (path === `/package/${id}/history`) {
+            return handlePackageHistory(id, dynamoDb);
         }
     }
 
