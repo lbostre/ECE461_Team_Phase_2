@@ -82,7 +82,7 @@ export const downloadAndSaveFromS3 = async (
 };
 
 // Helper function to convert stream to buffer
-const streamToBuffer = async (stream: ReadableStream | Blob | Readable | null): Promise<Buffer> => {
+export const streamToBuffer = async (stream: ReadableStream | Blob | Readable | null): Promise<Buffer> => {
     if (!stream) {
         throw new Error("Stream is null or undefined");
     }
