@@ -13,7 +13,7 @@ const corsHeaders = {
 };
 
 const endpointPermissions: Record<string, string[]> = {
-    search: ["/packages", "/package/{id}/rate", "/package/{id}/cost"],
+    search: ["/packages", "/package/{id}/rate", "/package/{id}/cost", "/package/byRegEx"],
     upload: ["/package/{id}", "/package"],
     download: ["/package/{id}"]
 };
