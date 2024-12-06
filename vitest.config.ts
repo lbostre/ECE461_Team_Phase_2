@@ -10,7 +10,6 @@ export default defineConfig({
             'logs',
             'coverage',
             // Exclude specific test files for not implemented endpoints
-            '__tests__/endpoints/packages.test.ts',
             '__tests__/endpoints/package_-id-.test.ts',
             '__tests__/endpoints/reset.test.ts',
             '__tests__/endpoints/package_byRegEx.test.ts', 
