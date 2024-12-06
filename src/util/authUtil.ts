@@ -12,6 +12,12 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "Content-Type, X-Authorization", // Specify allowed headers
 };
 
+const endpointPermissions: Record<string, string[]> = {
+    search: ["/packages", "/package/{id}/rate", "/package/{id}/cost"],
+    upload: ["/package/{id}", "/package"],
+    download: ["/package/{id}"]
+};
+
 // Handle authentication requests and token creation
 export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
     try {
@@ -143,31 +149,72 @@ export async function registerUser(
 }
 
 // Middleware to validate token and track call count
-export async function validateToken(authToken: string, dynamoDb: DynamoDBDocumentClient): Promise<boolean> {
+export async function validateToken(
+    authToken: string,
+    dynamoDb: DynamoDBDocumentClient,
+    currentPath: string
+): Promise<{ isValid: boolean; error?: string }> {
     try {
         const decoded = jwt.verify(authToken, JWT_SECRET) as jwt.JwtPayload;
 
-        const result = await dynamoDb.send(new GetCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: decoded.name },
-        }));
+        // Fetch the user from the database
+        const result = await dynamoDb.send(
+            new GetCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: decoded.name }
+            })
+        );
 
-        if (!result.Item) return false;
+        if (!result.Item) {
+            return { isValid: false, error: "User not found." };
+        }
 
-        const { callCount, expiresAt } = result.Item;
-        if (Date.now() / 1000 > expiresAt || callCount >= 1000) return false;
+        const { callCount, expiresAt, permissions } = result.Item;
 
-        await dynamoDb.send(new UpdateCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: decoded.name },
-            UpdateExpression: "SET callCount = callCount + :inc",
-            ExpressionAttributeValues: { ":inc": 1 },
-        }));
+        // Check if the token is expired or call count exceeded
+        if (Date.now() / 1000 > expiresAt) {
+            return { isValid: false, error: "Token has expired." };
+        }
 
-        return true;
+        if (callCount >= 1000) {
+            return { isValid: false, error: "API call limit exceeded." };
+        }
+
+        // Validate if the user has the appropriate permissions for the endpoint
+        const userPermissions: string[] = permissions || [];
+        let hasPermission = false;
+
+        for (const permission of userPermissions) {
+            if (
+                endpointPermissions[permission]?.some((endpoint) => {
+                    const pattern = endpoint.replace(/{id}/g, "\\w+"); // Replace {id} with a regex placeholder
+                    const regex = new RegExp(`^${pattern}$`);
+                    return regex.test(currentPath);
+                })
+            ) {
+                hasPermission = true;
+                break;
+            }
+        }
+
+        if (!hasPermission) {
+            return { isValid: false, error: "User does not have permission for this endpoint." };
+        }
+
+        // Increment the API call count
+        await dynamoDb.send(
+            new UpdateCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: decoded.name },
+                UpdateExpression: "SET callCount = callCount + :inc",
+                ExpressionAttributeValues: { ":inc": 1 }
+            })
+        );
+
+        return { isValid: true };
     } catch (error) {
         console.error("Error validating token:", error);
-        return false;
+        return { isValid: false, error: "Token validation failed." };
     }
 }
 
@@ -245,5 +292,39 @@ export async function handleGetUser(
             headers: corsHeaders,
             body: JSON.stringify({ error: "Internal Server Error" }),
         };
+    }
+}
+
+export async function getGroups(
+    authToken: string,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<string | null> {
+    try {
+        // Verify and decode the JWT token
+        const decoded = jwt.verify(authToken.replace("bearer ", "").trim(), JWT_SECRET) as jwt.JwtPayload;
+
+        if (!decoded || !decoded.name) {
+            console.error("Invalid token or missing username.");
+            return null;
+        }
+
+        // Query DynamoDB to fetch the user data
+        const result = await dynamoDb.send(
+            new GetCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: decoded.name },
+            })
+        );
+
+        if (!result.Item) {
+            console.error("User not found in the database.");
+            return null;
+        }
+
+        // Return the group name if available
+        return result.Item.group || null;
+    } catch (error) {
+        console.error("Error retrieving group:", error);
+        return null;
     }
 }

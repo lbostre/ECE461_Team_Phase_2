@@ -16,6 +16,7 @@ import {
     getExactPackage,
     getAllPackages,
 } from "./util/packageUtils.js";
+import { getGroups } from "./util/authUtil.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
 import { PutCommand, GetCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
@@ -35,7 +36,8 @@ const corsHeaders = {
 export async function handlePackagePost(
     body: any,
     s3Client: S3Client,
-    dynamoDb: DynamoDBDocumentClient
+    dynamoDb: DynamoDBDocumentClient,
+    authToken: string
 ): Promise<APIGatewayProxyResult> {
     if (!body) {
         return {
@@ -57,6 +59,7 @@ export async function handlePackagePost(
             Content: body.Content,
             debloat: body.debloat,
             Name: body.Name,
+            Secret: body.Secret,
         };
 
         console.log("Package data:", data);
@@ -184,6 +187,19 @@ export async function handlePackagePost(
 
         console.log("Package creation result:", result);
 
+        let group = null;
+
+        // Check if Secret is true and retrieve the group
+        if (data.Secret === true) {
+            group = await getGroups(authToken, dynamoDb);
+            if (!group) {
+                return {
+                    statusCode: 403,
+                    body: JSON.stringify({ error: "User group could not be retrieved" }),
+                };
+            }
+        }
+
         if (metricsResult && metricsResult.NetScore >= 0.5) {
             if (zipBase64 || s3Url) {
                 try {
@@ -195,6 +211,7 @@ export async function handlePackagePost(
                             URL: url,
                             JSProgram: data.JSProgram,
                             Metrics: metricsResult,
+                            Group: group,
                         },
                     };
                     await dynamoDb.send(new PutCommand(dynamoParams));
@@ -418,7 +435,8 @@ export async function handlePackageUpdate(
     id: string,
     body: string,
     dynamoDb: DynamoDBDocumentClient,
-    s3Client: S3Client
+    s3Client: S3Client,
+    authToken: string
 ): Promise<APIGatewayProxyResult> {
     try {
         if (!body) {
@@ -432,7 +450,7 @@ export async function handlePackageUpdate(
         }
 
         const requestBody = JSON.parse(body);
-        const { metadata, data } = requestBody;
+        const { metadata, data, Secret } = requestBody;
 
         if (
             !metadata?.ID ||
@@ -487,6 +505,19 @@ export async function handlePackageUpdate(
 
         let metricsResult: RepoDataResult | null = null;
         let s3Url: string | undefined;
+        let group: string | null = null;
+
+        // Handle `Secret` and retrieve user group
+        if (Secret === true) {
+            group = await getGroups(authToken, dynamoDb);
+            if (!group) {
+                return {
+                    statusCode: 403,
+                    headers: corsHeaders,
+                    body: JSON.stringify({ error: "User group could not be retrieved" }),
+                };
+            }
+        }
 
         // Run metrics and upload the package to S3
         if (contentToUpload || data.URL) {
@@ -526,6 +557,7 @@ export async function handlePackageUpdate(
             URL: data.URL || null,
             JSProgram: data.JSProgram || null,
             Metrics: metricsResult,
+            Group: group, // Add group if Secret was true
         };
 
         const putCommand = new PutCommand({

@@ -34,14 +34,14 @@ const corsHeaders = {
 
 async function extractAndValidateToken(
     event: APIGatewayEvent
-): Promise<boolean> {
+): Promise<{ isValid: boolean; error?: string }> {
     const authHeader = event.headers["X-Authorization"] || event.headers["x-authorization"];
     if (!authHeader) {
-        return false; // No token provided
+        return { isValid: false, error: "No authentication token provided." };
     }
 
     const token = authHeader.replace("bearer ", "").trim();
-    return await validateToken(token, dynamoDb);
+    return await validateToken(token, dynamoDb, event.path);
 }
 
 export const handler = async (
@@ -60,8 +60,8 @@ export const handler = async (
     }
 
     if (httpMethod === "POST" && path === "/packages") {
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
@@ -80,8 +80,8 @@ export const handler = async (
     }
 
     if (path === "/package" && httpMethod === "POST") {
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
@@ -90,7 +90,10 @@ export const handler = async (
                 }),
             };
         }
-        return handlePackagePost(body, s3Client, dynamoDb);
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+        if (authToken) {
+            return handlePackagePost(body, s3Client, dynamoDb, authToken);
+        }
     }
 
     if (httpMethod === "GET") {
@@ -120,8 +123,8 @@ export const handler = async (
             return handleGetUser(authToken, dynamoDb);
         }
         // Validate token
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
@@ -154,8 +157,8 @@ export const handler = async (
     }
 
     if (httpMethod === "POST" && pathParameters && pathParameters.id) {
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
@@ -166,8 +169,9 @@ export const handler = async (
         }
         const id = pathParameters.id;
         const body = event.body;
-        if (path === `/package/${id}` && body) {
-            return handlePackageUpdate(id, body, dynamoDb, s3Client);
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+        if (path === `/package/${id}` && body && authToken) {
+            return handlePackageUpdate(id, body, dynamoDb, s3Client, authToken);
         }
     }
 
@@ -183,8 +187,8 @@ export const handler = async (
                 }),
             };
         }
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
@@ -209,8 +213,8 @@ export const handler = async (
                 }),
             };
         }
-        const isValidToken = await extractAndValidateToken(event);
-        if (!isValidToken) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
             return {
                 statusCode: 403,
                 headers: corsHeaders,
