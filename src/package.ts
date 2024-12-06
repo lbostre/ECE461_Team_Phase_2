@@ -240,6 +240,13 @@ export async function handlePackagePost(
             body: JSON.stringify(result),
         };
     } catch (error) {
+        if (error instanceof SyntaxError) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+            };
+        }
         console.error("Error processing request:", error);
         return {
             statusCode: 500,
