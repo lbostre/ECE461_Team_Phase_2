@@ -59,3 +59,63 @@ export interface PackageQuery {
     Name: string;
     Version: string;
 }
+
+export interface IssueNode {
+    createdAt: string;
+    closedAt: string | null;
+    state: "OPEN" | "CLOSED";
+}
+
+export interface IssueEdge {
+    node: IssueNode;
+}
+
+export interface PageInfo {
+    hasNextPage: boolean;
+    endCursor: string | null;
+}
+
+export interface IssuesResponse {
+    repository: {
+        issues: {
+            edges: IssueEdge[];
+            pageInfo: PageInfo;
+        };
+    };
+}
+
+export interface CommitAuthor {
+    user: {
+        login: string;
+    } | null;
+}
+
+export interface CommitNode {
+    author: CommitAuthor | null;
+}
+
+export interface CommitEdge {
+    node: CommitNode;
+}
+
+export interface CommitHistory {
+    edges: CommitEdge[];
+    pageInfo: {
+        hasNextPage: boolean;
+        endCursor: string | null;
+    };
+}
+
+export interface RepositoryRef {
+    target: {
+        history: CommitHistory;
+    } | null;
+}
+
+export interface Repository {
+    ref: RepositoryRef | null;
+}
+
+export interface CommitsResponseData {
+    repository: Repository | null;
+}
