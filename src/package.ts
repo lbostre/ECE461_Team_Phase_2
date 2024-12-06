@@ -770,20 +770,23 @@ export async function handlePackageByRegEx(
             readmeContent = await fetchReadmesBatch(githubUrls);
         }
 
-        // Filter packages based on RegEx match on names or README content
         const results = items
             .filter((item: any) => {
-                const packageName = item.ECEfoursixone;
+                const packageNameWithVersion = item.ECEfoursixone; 
                 const githubUrl = item.URL;
                 const readmeText = readmeContent[githubUrl] || "";
-
+                const packageName = packageNameWithVersion.replace(/\d+$/, ""); 
                 return regexPattern.test(packageName) || regexPattern.test(readmeText);
             })
-            .map((item: any) => ({
-                Version: item.Version,
-                Name: item.ECEfoursixone,
-                ID: item.ECEfoursixone,
-            }));
+            .map((item: any) => {
+                const packageNameWithVersion = item.ECEfoursixone;
+                const packageName = packageNameWithVersion.replace(/\d+$/, ""); 
+                return {
+                    Version: item.Version,
+                    Name: packageName,
+                    ID: item.ECEfoursixone,
+                };
+            });
 
         // Handle no matches
         if (results.length === 0) {
