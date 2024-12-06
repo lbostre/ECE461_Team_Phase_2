@@ -1,3 +1,5 @@
+// Test /package/{id}/rate (GET)
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handler } from '../../index';
 import { APIGatewayProxyEvent } from 'aws-lambda';
@@ -5,17 +7,8 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { validateToken } from '../../src/util/authUtil';
 
-
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
-
-// Set the region to avoid the Missing region in config error
-process.env.AWS_REGION = 'us-east-1';
-process.env.JWT_SECRET = 'test-secret';
-
-// Mock AWS credentials
-process.env.AWS_ACCESS_KEY_ID = 'test-access-key-id';
-process.env.AWS_SECRET_ACCESS_KEY = 'test-secret-access-key';
 
 // Mock the handleAuthenticate and validateToken functions
 vi.mock('../../src/util/authUtil', () => ({

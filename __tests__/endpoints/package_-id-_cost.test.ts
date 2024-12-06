@@ -1,4 +1,4 @@
-// Test /package/{id}/cost endpoint
+// Test /package/{id}/cost (GET)
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handler } from '../../index';
