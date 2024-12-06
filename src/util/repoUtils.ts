@@ -91,7 +91,21 @@ export async function findLicense(repoPath: string, readme: string | null) {
             return identifyLicense(licenseContent);
         }
     }
-    if (!readme) throw new Error('Readme file not found');
+    const packageJsonPath = path.join(repoPath, 'package.json');
+    if (entries.some(entry => entry.name === 'package.json')) {
+        try {
+            const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
+            const packageJson = JSON.parse(packageJsonContent);
+            if (packageJson.license) {
+                return packageJson.license;
+            }
+        } catch (error) {
+            console.error("Error reading or parsing package.json:", error);
+        }
+    }
+    if (!readme) {
+        throw new Error('License information not found in LICENSE files, package.json, or README.');
+    }
     const readmeContent = await fs.promises.readFile(readme, 'utf8');
     return identifyLicense(readmeContent);
 }
