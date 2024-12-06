@@ -83,31 +83,51 @@ export async function findReadme(repoPath: string) {
     return null;
 }
 
-export async function findLicense(repoPath: string, readme: string | null) {
-    const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
+export async function findLicense(repoPath: string, readme: string | null): Promise<string | null> {
+    let licenseResult: string | null = null;
     const packageJsonPath = path.join(repoPath, 'package.json');
-    if (entries.some(entry => entry.name === 'package.json')) {
+    try {
+        const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
+        const packageJson = JSON.parse(packageJsonContent);
+        if (packageJson.license) {
+            const identifiedLicense = identifyLicense(packageJson.license);
+            if (identifiedLicense) {
+                licenseResult = licenseResult || identifiedLicense; 
+            }
+        }
+    } catch (error) {
+        console.error("Error reading or parsing package.json:", error);
+    }
+    try {
+        const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isFile() && entry.name.toLowerCase().startsWith('license')) {
+                const licenseContent = await fs.promises.readFile(path.join(repoPath, entry.name), 'utf8');
+                const identifiedLicense = identifyLicense(licenseContent);
+                if (identifiedLicense) {
+                    licenseResult = licenseResult || identifiedLicense; 
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error reading LICENSE files:", error);
+    }
+    if (readme) {
         try {
-            const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf8');
-            const packageJson = JSON.parse(packageJsonContent);
-            if (packageJson.license) {
-                return identifyLicense(packageJson.license);
+            const readmeContent = await fs.promises.readFile(readme, 'utf8');
+            const identifiedLicense = identifyLicense(readmeContent);
+            if (identifiedLicense) {
+                licenseResult = licenseResult || identifiedLicense; 
             }
         } catch (error) {
-            console.error("Error reading or parsing package.json:", error);
+            console.error("Error reading README file:", error);
         }
     }
-    for (const entry of entries) {
-        if (entry.isFile() && entry.name.toLowerCase().startsWith('license')) {
-            const licenseContent = await fs.promises.readFile(path.join(repoPath, entry.name), 'utf8');
-            return identifyLicense(licenseContent);
-        }
-    }
-    if (!readme) {
+    if (!licenseResult) {
         throw new Error('License information not found in LICENSE files, package.json, or README.');
     }
-    const readmeContent = await fs.promises.readFile(readme, 'utf8');
-    return identifyLicense(readmeContent);
+
+    return licenseResult;
 }
 
 export function identifyLicense(content: string) {
