@@ -660,3 +660,73 @@ export const getAllPackages = async (dynamoDb: DynamoDBDocumentClient) => {
 
     return allPackages;
 };
+
+export async function fetchReadmesBatch(
+    githubUrls: string[]
+): Promise<Record<string, string>> {
+    const graphqlEndpoint = "https://api.github.com/graphql";
+
+    // Extract owner and repo details for all URLs
+    const queries = githubUrls.map((url, index) => {
+        const [owner, repo] = extractOwnerRepoFromUrl(url);
+        return `
+            repo${index}: repository(owner: "${owner}", name: "${repo}") {
+                object(expression: "HEAD:README.md") {
+                    ... on Blob {
+                        text
+                    }
+                }
+            }
+        `;
+    });
+
+    // Break queries into manageable chunks
+    const chunkSize = 10; // GitHub API limits request size, keep batches small
+    const results: Record<string, string> = {};
+    const batchedQueries = splitIntoChunks(queries, chunkSize);
+
+    for (const batch of batchedQueries) {
+        const batchedQuery = `{ ${batch.join("\n")} }`;
+
+        const response = await axios.post(
+            graphqlEndpoint,
+            { query: batchedQuery },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        if (response.data.errors) {
+            console.error("Error fetching README files:", response.data.errors);
+            throw new Error("Failed to fetch README files.");
+        }
+
+        // Map results back to their corresponding GitHub URLs
+        const data = response.data.data;
+        Object.keys(data).forEach((key) => {
+            const index = parseInt(key.replace("repo", ""), 10);
+            results[githubUrls[index]] = data[key]?.object?.text || "";
+        });
+    }
+
+    return results;
+}
+
+function extractOwnerRepoFromUrl(url: string): [string, string] {
+    const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (!match) {
+        throw new Error(`Invalid GitHub URL: ${url}`);
+    }
+    return [match[1], match[2]];
+}
+
+function splitIntoChunks<T>(arr: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
