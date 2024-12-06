@@ -12,7 +12,7 @@ const ddbMock = mockClient(DynamoDBDocumentClient);
 describe('getTildePackages', () => {
   const tableName = 'ECE461_Database';
   const name = 'examplePackage';
-  const version = '1.0.0';
+  const version = '1.5.0';
 
   const mockItems = [
     {
@@ -56,8 +56,8 @@ describe('getTildePackages', () => {
     const result = await getTildePackages(name, version, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result).toEqual([
-      { Version: '1.0.0', Name: 'examplePackage', ID: 'examplePackage100' },
-      { Version: '1.0.1', Name: 'examplePackage', ID: 'examplePackage101' },
+      { Version: '1.5.0', Name: 'examplePackage', ID: 'examplePackage150' },
+      { Version: '1.5.1', Name: 'examplePackage', ID: 'examplePackage151' },
     ]);
 
     const commandCalls = ddbMock.commandCalls(ScanCommand, {

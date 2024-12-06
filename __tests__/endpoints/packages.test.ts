@@ -126,6 +126,7 @@ describe('/packages POST endpoint', () => {
     ddbMock.on(ScanCommand).resolves({
       Items: [
       { ECEfoursixone: 'Underscore123', Name: 'Underscore', Version: '1.2.3' },
+      { ECEfoursixone: 'Underscore133', Name: 'Underscore', Version: '1.3.3' },
       { ECEfoursixone: 'Underscore200', Name: 'Underscore', Version: '2.0.0' },
       ],
       LastEvaluatedKey: undefined,
@@ -161,9 +162,9 @@ describe('/packages POST endpoint', () => {
     expect(responseBody[0]).toHaveProperty('ID', 'Underscore123');
     expect(responseBody[0]).toHaveProperty('Name', 'Underscore');
     expect(responseBody[0]).toHaveProperty('Version', '1.2.3');
-    expect(responseBody[1]).toHaveProperty('ID', 'Underscore200');
+    expect(responseBody[1]).toHaveProperty('ID', 'Underscore133');
     expect(responseBody[1]).toHaveProperty('Name', 'Underscore');
-    expect(responseBody[1]).toHaveProperty('Version', '2.0.0');
+    expect(responseBody[1]).toHaveProperty('Version', '1.3.3');
   });
 
   // Test tilde range
@@ -175,9 +176,9 @@ describe('/packages POST endpoint', () => {
     ddbMock.on(ScanCommand).resolves({
       Items: [
       { ECEfoursixone: 'Underscore123', Name: 'Underscore', Version: '1.2.3' },
-      { ECEfoursixone: 'Underscore123', Name: 'Underscore', Version: '1.3.3' },
-      { ECEfoursixone: 'Underscore123', Name: 'Underscore', Version: '1.3.4' },
-      { ECEfoursixone: 'Underscore123', Name: 'Underscore', Version: '1.4.0' },
+      { ECEfoursixone: 'Underscore133', Name: 'Underscore', Version: '1.3.3' },
+      { ECEfoursixone: 'Underscore134', Name: 'Underscore', Version: '1.3.4' },
+      { ECEfoursixone: 'Underscore140', Name: 'Underscore', Version: '1.4.0' },
       { ECEfoursixone: 'Underscore200', Name: 'Underscore', Version: '2.0.0' },
       ],
       LastEvaluatedKey: undefined,
@@ -192,7 +193,7 @@ describe('/packages POST endpoint', () => {
           "Version": "Tilde (~1.3.3)",
           "Name": "Underscore",
         }
-      ]), // Query to get all packages
+      ]),
 
       queryStringParameters: { offset: '0' },
       pathParameters: null,
