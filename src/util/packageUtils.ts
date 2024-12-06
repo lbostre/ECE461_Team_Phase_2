@@ -570,7 +570,7 @@ export const getCaratPackages = async (
             ID: item.ECEfoursixone
         }));
     } catch (error) {
-        if (error.message === "Invalid version format for carat range.") {
+        if (error instanceof Error && error.message === "Invalid version format for carat range.") {
             throw error;
         }
         console.error("Error querying carat packages:", error);
@@ -620,7 +620,7 @@ export const getTildePackages = async (
             ID: item.ECEfoursixone
         }));
     } catch (error) {
-        if (error.message === "Invalid version format for tilde range") {
+        if (error instanceof Error && error.message === "Invalid version format for tilde range") {
             throw error;
         }
         console.error("Error querying tilde packages:", error);
