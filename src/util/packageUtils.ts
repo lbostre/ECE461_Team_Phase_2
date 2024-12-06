@@ -451,7 +451,7 @@ export async function fetchCostWithGraphQL(
     }
 }
 
-const extractNameFromId = (id: string): string => {
+export const extractNameFromId = (id: string): string => {
     return id.replace(/[0-9]/g, '');
 };
 
