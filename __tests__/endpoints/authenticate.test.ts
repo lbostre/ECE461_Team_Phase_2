@@ -1,3 +1,5 @@
+// Test /authenticate (PUT) endpoint
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { handleAuthenticate, validateToken } from '../../src/util/authUtil';
