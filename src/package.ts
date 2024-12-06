@@ -637,19 +637,19 @@ export const handlePackagesList = async (
                         results.push(exactPackage);
                     }
                 }
-            } else if (query.Version.includes("Bounded Range")) {
+            } else if (query.Version.toLowerCase().includes("bounded range".toLowerCase())) {
                 const range = query.Version.match(/\(([^)]+)\)/)?.[1]?.split("-");
                 if (range && range.length === 2) {
                     const boundedPackages = await getBoundedRangePackages(query.Name, range, dynamoDb);
                     results.push(...boundedPackages);
                 }
-            } else if (query.Version.includes("Carat")) {
+            } else if (query.Version.toLowerCase().includes("carat".toLowerCase())) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
                     results.push(...caratPackages);
                 }
-            } else if (query.Version.includes("Tilde")) {
+            } else if (query.Version.toLowerCase().includes("tilde".toLowerCase())) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
                     const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
