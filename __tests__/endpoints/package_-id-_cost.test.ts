@@ -25,7 +25,7 @@ describe('/package/{id}/cost endpoint', () => {
 
     it('should return the package cost for a valid ID without dependencies', async () => {
         // Mock the validateToken function to return true for valid tokens
-        vi.mocked(validateToken).mockResolvedValue(true);
+        vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
         // Mock the DynamoDB GetCommand to return a predefined response for valid package ID
         ddbMock.on(GetCommand, {
@@ -70,7 +70,7 @@ describe('/package/{id}/cost endpoint', () => {
 
     it('should return 400 if the package ID is missing', async () => {
         // Mock the validateToken function to return true for valid tokens
-        vi.mocked(validateToken).mockResolvedValue(true);
+        vi.mocked(validateToken).mockResolvedValue({ isValid: true });
         
         const event: APIGatewayProxyEvent = {
         httpMethod: 'GET',
@@ -115,9 +115,7 @@ describe('/package/{id}/cost endpoint', () => {
 
     it('should return 404 if the package does not exist', async () => {
         // Mock the validateToken function to return true for valid tokens and false for invalid tokens
-        vi.mocked(validateToken).mockImplementation(async (authToken: string) => {
-            return authToken === validAuthToken;
-            });
+        vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
         // Mock the DynamoDB GetCommand to return undefined for nonexistent package ID
         ddbMock.on(GetCommand).resolves({ Item: undefined });
@@ -144,7 +142,7 @@ describe('/package/{id}/cost endpoint', () => {
 
     it('should return 500 if there is an internal server error', async () => {
         // Mock the validateToken function to return true for valid tokens
-        vi.mocked(validateToken).mockResolvedValue(true);
+        vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
         ddbMock.on(GetCommand).rejects(new Error('Internal Server Error'));
 

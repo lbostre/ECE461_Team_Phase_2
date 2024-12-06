@@ -39,7 +39,7 @@ describe('/package POST endpoint', () => {
 
   it('should create a package with Content', async () => {
     // Mock the validateToken function to return true for valid tokens
-    vi.mocked(validateToken).mockResolvedValue(true);
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
     // Mock dynamoDB GetCommand to return a predefined response for a new package
     ddbMock.on(GetCommand).resolves({ Item: undefined });
@@ -82,7 +82,7 @@ describe('/package POST endpoint', () => {
 
   it('should create a package with URL', async () => {
     // Mock the validateToken function to return true for valid tokens
-    vi.mocked(validateToken).mockResolvedValue(true);
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
     // Mock dynamoDB GetCommand to return a predefined response for a new package
     ddbMock.on(GetCommand).resolves({ Item: undefined });
@@ -140,7 +140,7 @@ describe('/package POST endpoint', () => {
 
   it('should return 400 if both Content and URL are provided', async () => {
     // Mock the validateToken function to return true for valid tokens
-    vi.mocked(validateToken).mockResolvedValue(true);
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
     
     const event: APIGatewayProxyEvent = {
       httpMethod: 'POST',
@@ -210,9 +210,7 @@ describe('/package POST endpoint', () => {
 
   it('should return 409 if package already exists', async () => {
     // Mock the validateToken function to return true for valid tokens
-    vi.mocked(validateToken).mockResolvedValue(true);
-
-    // Mock a valid response for an existing package
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
     // Mock a response with an Item for an existing package
     ddbMock.on(GetCommand).resolves({
@@ -264,7 +262,7 @@ describe('/package POST endpoint', () => {
 
   it('should return 424 if package rating is disqualified', async () => {
     // Mock the validateToken function to return true for valid tokens
-    vi.mocked(validateToken).mockResolvedValue(true);
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
     // Mock dynamoDB GetCommand to return a predefined response for a new package
     ddbMock.on(GetCommand).resolves({ Item: undefined });
