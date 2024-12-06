@@ -543,7 +543,7 @@ export const getCaratPackages = async (
         // Create the valid semver range for carat version
         const versionFilter = semver.validRange(`^${version}`);
         if (!versionFilter) {
-            throw new Error("Invalid version format for carat range");
+            throw new Error("Invalid version format for carat range.");
         }
 
         // Scan for items that match the given name pattern
@@ -570,6 +570,9 @@ export const getCaratPackages = async (
             ID: item.ECEfoursixone
         }));
     } catch (error) {
+        if (error.message === "Invalid version format for carat range.") {
+            throw error;
+        }
         console.error("Error querying carat packages:", error);
         throw new Error("Could not query carat packages.");
     }
