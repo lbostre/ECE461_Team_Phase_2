@@ -1,4 +1,4 @@
-// Test findLicense function
+// __tests__/util/repoUtils/findLicense.test.ts
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs';
@@ -31,20 +31,19 @@ describe('findLicense', () => {
     expect(fs.promises.readFile).toHaveBeenCalledWith(path.join(repoPath, 'LICENSE'), 'utf8');
   });
 
-  it('should return the license type if a LICENSE file is found with a different name', async () => {
-    // Mock fs.promises.readdir to return a list of directory entries
-    vi.mocked(fs.promises.readdir).mockResolvedValue([
-      { isFile: () => true, name: 'LICENSE.txt' } as fs.Dirent,
-    ]);
-
-    // Mock fs.promises.readFile to return the content of the LICENSE file
-    vi.mocked(fs.promises.readFile).mockResolvedValue('Apache License, Version 2.0');
+  it('should return the license type if a license is found in package.json', async () => {
+    // Mock fs.promises.readFile to return the content of the package.json file
+    vi.mocked(fs.promises.readFile).mockImplementation((filePath) => {
+      if (filePath === path.join(repoPath, 'package.json')) {
+        return Promise.resolve(JSON.stringify({ license: 'Apache License, Version 2.0' }));
+      }
+      return Promise.resolve('');
+    });
 
     const result = await findLicense(repoPath, null);
 
     expect(result).toBe('Apache 2.0');
-    expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
-    expect(fs.promises.readFile).toHaveBeenCalledWith(path.join(repoPath, 'LICENSE.txt'), 'utf8');
+    expect(fs.promises.readFile).toHaveBeenCalledWith(path.join(repoPath, 'package.json'), 'utf8');
   });
 
   it('should return the license type if a LICENSE file is found in the README file', async () => {
@@ -69,7 +68,7 @@ describe('findLicense', () => {
       { isFile: () => true, name: 'index.js' } as fs.Dirent,
     ]);
 
-    await expect(findLicense(repoPath, null)).rejects.toThrow('Readme file not found');
+    await expect(findLicense(repoPath, null)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
   });
 
@@ -77,7 +76,7 @@ describe('findLicense', () => {
     // Mock fs.promises.readdir to throw an error
     vi.mocked(fs.promises.readdir).mockRejectedValue(new Error('Failed to read directory'));
 
-    await expect(findLicense(repoPath, null)).rejects.toThrow('Failed to read directory');
+    await expect(findLicense(repoPath, null)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
   });
 });
