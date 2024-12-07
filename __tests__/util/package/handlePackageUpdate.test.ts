@@ -148,6 +148,78 @@ describe('handlePackageUpdate', () => {
     expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
   });
 
+  it('should create a package successfully using content string and debloat', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
+    ddbMock.on(PutCommand).resolves({});
+    vi.mocked(uploadToS3).mockResolvedValue('s3-url');
+    vi.mocked(extractVersionFromPackageJson).mockResolvedValue('1.0.0');
+    vi.mocked(extractPackageJsonUrl).mockResolvedValue('https://github.com/jashkenas/underscore');
+    vi.mocked(getRepoData).mockResolvedValue(validRepoData);
+    vi.mocked(createPackageService).mockResolvedValue({
+      metadata: {
+        Name: "Underscore",
+        Version: "1.0.0",
+        ID: "underscore"
+      },
+      data: {
+        Content: 'example content',
+        URL: "https://github.com/jashkenas/underscore",
+        JSProgram: `
+          if (process.argv.length === 7) {
+            console.log('Success')
+            process.exit(0)
+          } else {
+            console.log('Failed')
+            process.exit(1)
+          }
+        `
+      }
+    });
+    vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
+    vi.mocked(performDebloat).mockResolvedValue('debloated-content');
+
+    const mockPackageDataContentDebloat = {
+      ...mockPackageData,
+      debloat: true,
+    };
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageDataContentDebloat),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(200);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody).toHaveProperty('message', 'Version is updated.');
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+  });
+
+  it('should handle failed debloat properly', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    vi.mocked(performDebloat).mockRejectedValue(new Error('Failed to debloat'));
+
+    const mockPackageDataContentDebloat = {
+      ...mockPackageData,
+      debloat: true,
+    };
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageDataContentDebloat),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(500);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody).toHaveProperty('error', 'An error occurred while processing the request');
+  });
+
   it('should return 400 if the request body is missing', async () => {
     const result = await handlePackageUpdate(
       'examplePackage123',
