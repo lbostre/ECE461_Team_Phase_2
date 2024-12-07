@@ -473,7 +473,16 @@ export async function handlePackageUpdate(
             };
         }
 
-        const requestBody = JSON.parse(body);
+        let requestBody;
+        try {
+            requestBody = JSON.parse(body);
+        } catch (error) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+            };
+        }
         const { metadata, data, Secret } = requestBody;
 
         if (
