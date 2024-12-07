@@ -182,22 +182,26 @@ export async function validateToken(
 
         // Validate if the user has the appropriate permissions for the endpoint
         const userPermissions: string[] = permissions || [];
+        let requiresPermission = false;
         let hasPermission = false;
 
-        for (const permission of userPermissions) {
+        // Check if the endpoint is listed in `endpointPermissions`
+        for (const permission of Object.keys(endpointPermissions)) {
             if (
-                endpointPermissions[permission]?.some((endpoint) => {
+                endpointPermissions[permission].some((endpoint) => {
                     const pattern = endpoint.replace(/{id}/g, "\\w+"); // Replace {id} with a regex placeholder
                     const regex = new RegExp(`^${pattern}$`);
                     return regex.test(currentPath);
                 })
             ) {
-                hasPermission = true;
+                requiresPermission = true;
+                hasPermission = userPermissions.includes(permission);
                 break;
             }
         }
 
-        if (!hasPermission) {
+        // If the endpoint requires permission and the user does not have it, deny access
+        if (requiresPermission && !hasPermission) {
             return { isValid: false, error: "User does not have permission for this endpoint." };
         }
 
