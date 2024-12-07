@@ -11,12 +11,11 @@ export default defineConfig({
             'coverage',
             // Files with not completed tests
             '__tests__/endpoints/package_-id-.test.ts',
-            '__tests__/endpoints/reset.test.ts',
             '__tests__/endpoints/package_byRegEx.test.ts', 
+            // '__tests__/endpoints/package.test.ts',
             // Files with failing tests
             '__tests__/util/packageUtils/createPackageService.test.ts',
             '__tests__/util/package/handlePackageUpdate.test.ts',
-            '__tests__/util/package/handlePackagePost.test.ts',
             // Empty files
         ],
         coverage: {
@@ -25,7 +24,7 @@ export default defineConfig({
             reportsDirectory: './coverage',
             reporter: ['text', 'html', 'json-summary'],
             all: false,  // Disable to avoid including all files by default
-            include: ['src/**/*.ts'], // Only include source files you want to cover
+            include: ['src/**/*.ts', 'index.ts'], // Only include source files you want to cover
             exclude: ['node_modules', 'dist', '__tests__', 'repos/**/*', 'logs', 'coverage'],
             thresholds: {
                 statements: 80,
