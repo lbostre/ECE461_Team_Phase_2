@@ -192,4 +192,32 @@ describe('handlePackageUpdate', () => {
     const responseBody = JSON.parse(result.body);
     expect(responseBody.error).toBe('Internal Server Error');
   });
+  
+  it('should return 424 if the package rating is disqualified', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
+    ddbMock.on(PutCommand).resolves({});
+    vi.mocked(uploadToS3).mockResolvedValue('s3-url');
+    vi.mocked(getRepoData).mockResolvedValue({
+      BusFactor: 0.2,
+      Correctness: 0.2,
+      RampUp: 0.2,
+      ResponsiveMaintainer: 0.2,
+      LicenseScore: 0.2,
+      NetScore: 0.2,
+    });
+    vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageData),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(424);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('Package is not uploaded due to the disqualified rating.');
+  });
 });
