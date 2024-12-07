@@ -197,15 +197,6 @@ export const handler = async (
     //Register a User
     if (path === "/users" && httpMethod === "POST") {
         const authToken = headers["X-Authorization"] || headers["x-authorization"];
-        if (!authToken) {
-            return {
-                statusCode: 403,
-                headers: corsHeaders,
-                body: JSON.stringify({
-                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
-                }),
-            };
-        }
         const validation = await extractAndValidateToken(event);
         if (!validation.isValid) {
             return {
