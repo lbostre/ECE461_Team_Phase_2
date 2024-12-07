@@ -55,7 +55,7 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
         const user = userResult.Item;
 
         // Check if the current token is expired or past 1000 API interactions
-        if (user.expiresAt > Math.floor(Date.now() / 1000) && user.callCount <= 1000) {
+        if (user.expiresAt > Math.floor(Date.now() / 1000) && user.callCount <= 1000 && user.authToken) {
             console.log("Returning existing unexpired token.");
             return {
                 statusCode: 200,
