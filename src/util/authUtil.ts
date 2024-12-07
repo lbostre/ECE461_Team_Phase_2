@@ -143,7 +143,10 @@ export async function registerUser(
         return {
             statusCode: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: "Internal Server Error" }),
+            body: JSON.stringify({
+                error: "Internal Server Error",
+                details: error instanceof Error ? error.message : String(error),
+            }),
         };
     }
 }

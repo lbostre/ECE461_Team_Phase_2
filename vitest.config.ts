@@ -10,9 +10,9 @@ export default defineConfig({
             'logs',
             'coverage',
             // Files with not completed tests
-            '__tests__/endpoints/package_-id-.test.ts',
             '__tests__/endpoints/package_byRegEx.test.ts', 
             // '__tests__/endpoints/package.test.ts',
+            '__tests__/endpoints/package_-id-.test.ts',
             // Empty files
         ],
         coverage: {
