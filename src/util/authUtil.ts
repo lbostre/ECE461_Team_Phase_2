@@ -376,7 +376,7 @@ export async function handleReset(
             clearTable("ECE461_PackagesTable", dynamoDb),
             clearTable("ECE461_CostsTable", dynamoDb),
         ]);
-        if (clear_results.some((result) => result instanceof Error)) {
+        if (clear_results.some((result: any) => result instanceof Error)) {
             throw new Error("Error clearing tables.");
         }
 

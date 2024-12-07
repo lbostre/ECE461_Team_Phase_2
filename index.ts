@@ -208,7 +208,17 @@ export const handler = async (
             };
         }
         const newUser = body ? JSON.parse(body) : null;
-        return registerUser(authToken, newUser, dynamoDb);
+        if (authToken) {
+            return registerUser(authToken, newUser, dynamoDb);
+        } else {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication token is missing.",
+                }),
+            };
+        }
     }
 
     //Delete a User
