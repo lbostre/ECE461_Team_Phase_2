@@ -1,3 +1,4 @@
+import DeletePackageButton from "@/components/DeletePackageButton";
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -332,6 +333,7 @@ export default function Package() {
                         </Table>
                     </div>
                 </div>
+                <DeletePackageButton packageID={name || ""} />
             </div>
         </div>
     );
