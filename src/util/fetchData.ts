@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-function correctGitHubUrl(apiUrl: string, endpoint: string): string {
+export function correctGitHubUrl(apiUrl: string, endpoint: string): string {
     try {
         // Ensure the URL is a valid URL
         const parsedUrl = new URL(apiUrl);
