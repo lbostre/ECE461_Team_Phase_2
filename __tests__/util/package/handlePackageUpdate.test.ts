@@ -181,7 +181,10 @@ describe('handlePackageUpdate', () => {
 
     const mockPackageDataContentDebloat = {
       ...mockPackageData,
+      data: {
+      ...mockPackageData.data,
       debloat: true,
+      },
     };
 
     const result = await handlePackageUpdate(
@@ -200,13 +203,16 @@ describe('handlePackageUpdate', () => {
 
   it('should handle failed debloat properly', async () => {
     vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
     vi.mocked(performDebloat).mockRejectedValue(new Error('Failed to debloat'));
 
     const mockPackageDataContentDebloat = {
       ...mockPackageData,
+      data: {
+      ...mockPackageData.data,
       debloat: true,
+      },
     };
-
     const result = await handlePackageUpdate(
       'examplePackage123',
       JSON.stringify(mockPackageDataContentDebloat),
@@ -367,5 +373,25 @@ describe('handlePackageUpdate', () => {
     expect(responseBody).toHaveProperty('message', 'Version is updated.');
     expect(uploadToS3).toHaveBeenCalled();
     expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+  });
+
+  it('should handle internal server errors for uploading to S3', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
+    vi.mocked(getRepoData).mockResolvedValue(validRepoData);
+    vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
+    vi.mocked(uploadToS3).mockRejectedValue(new Error('S3 error'));
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageData),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(500);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('An error occurred while running metrics or uploading to S3.');
   });
 });

@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { handlePackagePost } from '../../../src/package';
-import { validateToken, getUserInfo } from '../../../src/util/authUtil';
+import { validateToken, getUserInfo, getGroups } from '../../../src/util/authUtil';
 import {
   uploadToS3,
   extractVersionFromPackageJson,
@@ -32,6 +32,7 @@ const ddbMock = mockClient(DynamoDBDocumentClient);
 vi.mock('../../../src/util/authUtil', () => ({
   validateToken: vi.fn(),
   getUserInfo: vi.fn(),
+  getGroups: vi.fn(),
 }));
 
 // Mock the utility functions
@@ -214,6 +215,56 @@ describe('handlePackagePost', () => {
 
     const result = await handlePackagePost(
       JSON.stringify(mockPackageDataUrl),
+      s3Mock as unknown as S3Client,
+      ddbMock as unknown as DynamoDBDocumentClient,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(201);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody).toHaveProperty('metadata');
+    expect(responseBody.metadata).toHaveProperty('ID');
+    expect(uploadGithubRepoAsZipToS3).toHaveBeenCalled();
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+  });
+
+  it('should create a package successfully using NPM URL', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    ddbMock.on(GetCommand).resolves({ Item: undefined });
+    ddbMock.on(PutCommand).resolves({});
+    vi.mocked(uploadToS3).mockResolvedValue('s3-url');
+    vi.mocked(getRepoData).mockResolvedValue(validRepoData);
+    vi.mocked(getRepositoryVersion).mockResolvedValue('1.0.0');
+    vi.mocked(createPackageService).mockResolvedValue({
+      metadata: {
+      Name: "Underscore",
+      Version: "1.0.0",
+      ID: "underscore"
+      },
+        data: {
+        Content: contentString,
+        URL: "https://www.npmjs.com/package/react",
+        JSProgram: `
+          if (process.argv.length === 7) {
+          console.log('Success')
+          process.exit(0)
+          } else {
+          console.log('Failed')
+          process.exit(1)
+          }
+        `
+      }
+    });
+    vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
+    vi.mocked(uploadGithubRepoAsZipToS3).mockResolvedValue('base64-encoded-zip');
+
+    const mockPackageDataUrlNpm = {
+      ...mockPackageDataUrl,
+      URL: 'https://www.npmjs.com/package/react',
+    };
+
+    const result = await handlePackagePost(
+      JSON.stringify(mockPackageDataUrlNpm),
       s3Mock as unknown as S3Client,
       ddbMock as unknown as DynamoDBDocumentClient,
       validAuthToken
