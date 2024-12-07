@@ -43,7 +43,7 @@ describe('handlePackageList function', () => {
             }
         ]);
 
-        const result = await handlePackagesList(body, 0, ddbMock);
+        const result = await handlePackagesList(body, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
@@ -75,7 +75,7 @@ describe('handlePackageList function', () => {
             }
         ]);
 
-        const result = await handlePackagesList(body, 0, ddbMock);
+        const result = await handlePackagesList(body, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
@@ -111,7 +111,7 @@ describe('handlePackageList function', () => {
             }
         ]);
 
-        const result = await handlePackagesList(body, 0, ddbMock);
+        const result = await handlePackagesList(body, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
@@ -149,7 +149,7 @@ describe('handlePackageList function', () => {
             }
         ]);
 
-        const result = await handlePackagesList(body, 0, ddbMock);
+        const result = await handlePackagesList(body, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
@@ -168,7 +168,7 @@ describe('handlePackageList function', () => {
 
         const body = JSON.stringify({});
 
-        const result = await handlePackagesList(body, 0, ddbMock);
+        const result = await handlePackagesList(body, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(400);
         const responseBody = JSON.parse(result.body);
