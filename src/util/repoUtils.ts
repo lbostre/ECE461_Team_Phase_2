@@ -132,18 +132,33 @@ export async function findLicense(repoPath: string, readme: string | null): Prom
 
 export function identifyLicense(content: string) {
     const licensePatterns: { [key: string]: RegExp } = {
-        'MIT': /mit license/i,
-        'Apache 2.0': /apache license, version 2\.0/i,
-        'GPL v2.0': /gnu general public license, version 2/i,
-        'GPL v3.0': /gnu general public license, version 3/i,
-        'LGPL v2.1': /gnu lesser general public license, version 2\.1/i,
-        'LGPL v3.0': /gnu lesser general public license, version 3/i,
-        'BSD 2-Clause': /bsd 2-clause "simplified" license/i,
-        'BSD 3-Clause': /bsd 3-clause "new" or "revised" license/i,
-        'MPL 2.0': /mozilla public license, version 2\.0/i,
-        'CDDL 1.0': /common development and distribution license, version 1\.0/i,
-        'EPL 2.0': /eclipse public license, version 2\.0/i
-      };
+        // MIT License variations
+        'MIT': /\bmit\b|\bmit license\b|\blicensed under the mit license\b/i,
+    
+        // Apache License variations
+        'Apache 2.0': /\bapache\b.*(2\.0|version 2\.0)|\blicensed under the apache license, version 2\.0\b/i,
+    
+        // GPL (General Public License) variations
+        'GPL v2.0': /\bgpl\b.*(2\.0|version 2)|\bgnu general public license, version 2\b/i,
+        'GPL v3.0': /\bgpl\b.*(3\.0|version 3)|\bgnu general public license, version 3\b/i,
+    
+        // LGPL (Lesser General Public License) variations
+        'LGPL v2.1': /\blgpl\b.*(2\.1|version 2\.1)|\bgnu lesser general public license, version 2\.1\b/i,
+        'LGPL v3.0': /\blgpl\b.*(3\.0|version 3)|\bgnu lesser general public license, version 3\b/i,
+    
+        // BSD License variations
+        'BSD 2-Clause': /\bbsd\b.*(2-clause|simplified license)|\blicensed under the bsd 2-clause license\b/i,
+        'BSD 3-Clause': /\bbsd\b.*(3-clause|revised|new license)|\blicensed under the bsd 3-clause license\b/i,
+    
+        // Mozilla Public License variations
+        'MPL 2.0': /\bmozilla\b.*(2\.0|version 2\.0)|\blicensed under the mozilla public license, version 2\.0\b/i,
+    
+        // Common Development and Distribution License variations
+        'CDDL 1.0': /\bcddl\b.*(1\.0|version 1\.0)|\blicensed under the common development and distribution license, version 1\.0\b/i,
+    
+        // Eclipse Public License variations
+        'EPL 2.0': /\bepl\b.*(2\.0|version 2\.0)|\blicensed under the eclipse public license, version 2\.0\b/i
+    };    
 
     for (const [license, pattern] of Object.entries(licensePatterns)) {
         if (pattern.test(content)) return license;
