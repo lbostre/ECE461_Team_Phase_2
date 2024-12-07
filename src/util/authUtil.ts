@@ -428,14 +428,26 @@ export async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentCl
 export async function getUserInfo(authToken: string, dynamoDb: DynamoDBDocumentClient) {
     try {
         const token = authToken.replace("bearer ", "").trim();
-        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+        } catch (error) {
+            if (error instanceof jwt.JsonWebTokenError) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Authentication failed due to invalid or malformed AuthenticationToken." }),
+            };
+            }
+            throw error;
+        }
 
         // Verify if the decoded token contains a valid name
         if (!decoded || !decoded.name) {
             return {
-                statusCode: 403,
-                headers: corsHeaders,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+            statusCode: 403,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
             };
         }
 
