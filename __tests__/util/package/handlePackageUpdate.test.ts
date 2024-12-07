@@ -217,7 +217,7 @@ describe('handlePackageUpdate', () => {
 
     expect(result.statusCode).toBe(500);
     const responseBody = JSON.parse(result.body);
-    expect(responseBody).toHaveProperty('error', 'An error occurred while processing the request');
+    expect(responseBody).toHaveProperty('error', 'Internal Server Error');
   });
 
   it('should return 400 if the request body is missing', async () => {
