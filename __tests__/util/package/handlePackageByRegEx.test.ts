@@ -94,6 +94,22 @@ describe('handlePackageByRegEx', () => {
     expect(responseBody.error).toBe('The provided RegEx pattern is invalid.');
   });
 
+  it('should return 404 if no package is found under the regex', async () => {
+    ddbMock.on(ScanCommand).resolves(mockResponse);
+    vi.mocked(fetchReadmesBatch).mockResolvedValue({
+      'https://github.com/jashkenas/underscore': 'Underscore README content',
+    });
+
+    // Adjust valid body to match no packages
+    const invalidRegex = JSON.stringify({ RegEx: '.*?Invalid.*' });
+
+    const result = await handlePackageByRegEx(invalidRegex, ddbMock as unknown as DynamoDBDocumentClient);
+
+    expect(result.statusCode).toBe(404);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('No package found under this regex.');
+  });
+
   it('should handle internal server errors gracefully', async () => {
     ddbMock.on(ScanCommand).rejects(new Error('DynamoDB error'));
 
