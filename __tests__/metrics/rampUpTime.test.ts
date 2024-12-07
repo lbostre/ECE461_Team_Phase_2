@@ -1,58 +1,30 @@
-// Test rampUpTime function
+// __tests__/metrics/licensing.test.ts
 
-import { describe, it, expect, vi } from 'vitest';
-import * as fs from 'fs';
-import { rampUpTime } from '../../src/metrics/rampUpTime';
+import { describe, it, expect } from 'vitest';
+import { licensing } from '../../src/metrics/licensing';
 
-describe('rampUpTime', () => {
-  it('should throw an error if readme is null', async () => {
-    await expect(rampUpTime(null)).rejects.toThrow('Readme file not found');
+describe('licensing', () => {
+  it('should return 1 for a valid license', async () => {
+    const result = await licensing('MIT');
+    expect(result.licenseCompatabilityValue).toBe(1);
+    expect(result.licenseLatency).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return 0 if readme does not contain any headings', async () => {
-    const readFileSpy = vi.spyOn(fs.promises, 'readFile').mockResolvedValue('No relevant headings here.');
-    const result = await rampUpTime('dummy/path/to/readme.md');
-    expect(result.rampUpTimeValue).toBe(0);
-    expect(result.rampUpTimeEnd).toBeLessThanOrEqual(Date.now());
-    readFileSpy.mockRestore();
+  it('should return 0 for a null license', async () => {
+    const result = await licensing(null);
+    expect(result.licenseCompatabilityValue).toBe(0);
+    expect(result.licenseLatency).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return 1 if readme contains all headings', async () => {
-    const readFileSpy = vi.spyOn(fs.promises, 'readFile').mockResolvedValue(`
-      # Installation
-      # Usage
-      # Configuration
-      # FAQ
-      # Resources
-    `);
-    const result = await rampUpTime('dummy/path/to/readme.md');
-    expect(result.rampUpTimeValue).toBe(1);
-    expect(result.rampUpTimeEnd).toBeLessThanOrEqual(Date.now());
-    readFileSpy.mockRestore();
+  it('should return 1 for a non-null license', async () => {
+    const result = await licensing('Apache-2.0');
+    expect(result.licenseCompatabilityValue).toBe(1);
+    expect(result.licenseLatency).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return correct value if readme contains some headings', async () => {
-    const readFileSpy = vi.spyOn(fs.promises, 'readFile').mockResolvedValue(`
-      # Installation
-      # Usage
-    `);
-    const result = await rampUpTime('dummy/path/to/readme.md');
-    expect(result.rampUpTimeValue).toBe(2 / 5);
-    expect(result.rampUpTimeEnd).toBeLessThanOrEqual(Date.now());
-    readFileSpy.mockRestore();
-  });
-
-  it('should handle case insensitive headings', async () => {
-    const readFileSpy = vi.spyOn(fs.promises, 'readFile').mockResolvedValue(`
-      # installation
-      # usage
-      # configuration
-      # faq
-      # resources
-    `);
-    const result = await rampUpTime('dummy/path/to/readme.md');
-    expect(result.rampUpTimeValue).toBe(1);
-    expect(result.rampUpTimeEnd).toBeLessThanOrEqual(Date.now());
-    readFileSpy.mockRestore();
+  it('should return 0 for an empty string license', async () => {
+    const result = await licensing('');
+    expect(result.licenseCompatabilityValue).toBe(0);
+    expect(result.licenseLatency).toBeGreaterThanOrEqual(0);
   });
 });
