@@ -21,7 +21,7 @@ const endpointPermissions: Record<string, string[]> = {
 // Handle authentication requests and token creation
 export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
     try {
-        const parsedBody = body ? JSON.parse(body) : null;
+        const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
 
         if (!parsedBody || !parsedBody.User || !parsedBody.Secret) {
             return {
@@ -361,7 +361,7 @@ export async function handleReset(
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if the user is an admin
-        const decoded = jwt.verify(authToken, JWT_SECRET) as jwt.JwtPayload;
+        const decoded = jwt.verify(authToken.replace("bearer ", "").trim(), JWT_SECRET) as jwt.JwtPayload;
         if (!decoded.isAdmin) {
             return {
                 statusCode: 401,

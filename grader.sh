@@ -68,7 +68,6 @@ download_logs() {
   fi
 }
 
-
 print_run_details() {
   local OUTPUT_JSON="$1"
 
