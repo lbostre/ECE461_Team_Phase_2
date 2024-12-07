@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { handlePackageUpdate } from '../../../src/package';
-import { validateToken, getUserInfo } from '../../../src/util/authUtil';
+import { validateToken, getUserInfo, getGroups } from '../../../src/util/authUtil';
 import {
   uploadToS3,
   extractVersionFromPackageJson,
@@ -30,6 +30,7 @@ const ddbMock = mockClient(DynamoDBDocumentClient);
 vi.mock('../../../src/util/authUtil', () => ({
   validateToken: vi.fn(),
   getUserInfo: vi.fn(),
+  getGroups: vi.fn(),
 }));
 
 // Mock the utility functions
@@ -242,5 +243,57 @@ describe('handlePackageUpdate', () => {
     expect(result.statusCode).toBe(424);
     const responseBody = JSON.parse(result.body);
     expect(responseBody.error).toBe('Package is not uploaded due to the disqualified rating.');
+  });
+
+  it('should return 403 if user group could not be retrieved when Secret is true', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    vi.mocked(getGroups).mockResolvedValue(undefined); // Simulate user group not being retrieved
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
+
+    const mockPackageDataWithSecret = {
+      ...mockPackageData,
+      Secret: true,
+    };
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageDataWithSecret),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(403);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('User group could not be retrieved');
+  });
+
+  it('should handle Secret flag and retrieve user group successfully', async () => {
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
+    vi.mocked(getGroups).mockResolvedValue('test-group'); // Simulate user group being retrieved
+    ddbMock.on(GetCommand).resolves(mockDynamoResponse);
+    ddbMock.on(PutCommand).resolves({});
+    vi.mocked(uploadToS3).mockResolvedValue('s3-url');
+    vi.mocked(getRepoData).mockResolvedValue(validRepoData);
+    vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
+
+    const mockPackageDataWithSecret = {
+      ...mockPackageData,
+      Secret: true,
+    };
+
+    const result = await handlePackageUpdate(
+      'examplePackage123',
+      JSON.stringify(mockPackageData),
+      ddbMock as unknown as DynamoDBDocumentClient,
+      s3Mock as unknown as S3Client,
+      validAuthToken
+    );
+
+    expect(result.statusCode).toBe(200);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody).toHaveProperty('message', 'Version is updated.');
+    expect(uploadToS3).toHaveBeenCalled();
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
   });
 });
