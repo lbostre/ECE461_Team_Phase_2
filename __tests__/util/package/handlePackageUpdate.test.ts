@@ -319,7 +319,7 @@ describe('handlePackageUpdate', () => {
 
   it('should return 403 if user group could not be retrieved when Secret is true', async () => {
     vi.mocked(validateToken).mockResolvedValue({ isValid: true });
-    vi.mocked(getGroups).mockResolvedValue(undefined); // Simulate user group not being retrieved
+    vi.mocked(getGroups).mockResolvedValue(null); // Simulate user group not being retrieved
     ddbMock.on(GetCommand).resolves(mockDynamoResponse);
 
     const mockPackageDataWithSecret = {
