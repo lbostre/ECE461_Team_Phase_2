@@ -4,3 +4,4 @@ run.log
 .env
 .DS_Store
 coverage
+/logs
