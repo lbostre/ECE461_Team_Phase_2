@@ -456,9 +456,9 @@ export async function fetchCostWithGraphQL(
 
             for (const dep of dependencyNodes) {
                 const packageName = dep.packageName;
-                if (!allowedDependencies.has(packageName)) {
-                    continue;
-                }
+                // if (!allowedDependencies.has(packageName)) {
+                //     continue;
+                // }
 
                 const version = dep.requirements.replace(/[^\d]/g, ''); // Strip non-digit characters
                 const dependencyId = `${packageName}${version}`;
