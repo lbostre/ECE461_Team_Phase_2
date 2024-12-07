@@ -163,12 +163,12 @@ describe('handlePackageList function', () => {
         expect(responseBody[1]).toHaveProperty('Version', '1.3.4');
     });
 
-    it('should return 400 if the request body is undefined', async () => {
+    it('should return 400 if the request body is null', async () => {
         vi.mocked(validateToken).mockResolvedValue({ isValid: true });
 
         const body = JSON.stringify({});
 
-        const result = await handlePackagesList(undefined, 0, ddbMock as unknown as DynamoDBDocumentClient);
+        const result = await handlePackagesList(null, 0, ddbMock as unknown as DynamoDBDocumentClient);
 
         expect(result.statusCode).toBe(400);
         const responseBody = JSON.parse(result.body);
