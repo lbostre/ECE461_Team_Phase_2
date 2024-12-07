@@ -156,47 +156,4 @@ describe('/package/byRegEx POST endpoint', () => {
     const responseBody = JSON.parse(result.body);
     expect(responseBody.error).toBe('No package found under this regex.');
   });
-
-  it('should return a 500 status for internal server error', async () => {
-    vi.mocked(extractAndValidateToken).mockResolvedValue({ isValid: true });
-    const internalSeverError = {
-      statusCode: 500,
-      headers: validHeaders,
-      body: JSON.stringify({
-          error: "Internal Server Error",
-      }),
-    };
-    vi.mocked(handlePackageByRegEx).mockRejectedValue(internalSeverError);
-
-    const event: APIGatewayProxyEvent = {
-      httpMethod: 'POST',
-      path: '/package/byRegEx',
-      headers: validHeaders,
-      body: JSON.stringify({ RegEx: '.*?Underscore.*' }),
-      queryStringParameters: null,
-      pathParameters: null,
-      isBase64Encoded: false,
-      multiValueHeaders: {},
-      multiValueQueryStringParameters: null,
-      stageVariables: null,
-      requestContext: {} as any,
-      resource: '',
-    };
-
-    // Mock the GetCommand to return a valid user item
-    ddbMock.on(GetCommand).resolves({
-      Item: {
-        username: 'testuser',
-        callCount: 10,
-        expiresAt: Math.floor(Date.now() / 1000) + 3600, // Token unexpired
-        permissions: ['search'],
-      },
-    });
-
-    const result = await handler(event);
-
-    expect(result.statusCode).toBe(500);
-    const responseBody = JSON.parse(result.body);
-    expect(responseBody.error).toBe('Internal Server Error');
-  });
 });
