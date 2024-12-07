@@ -6,7 +6,11 @@
   "main": "index.js",
   "scripts": {
     "build": "npx tsc",
-    "test": "vitest --config ./vitest.config.ts run --coverage"
+    "test": "vitest --config ./vitest.config.ts run --coverage",
+    "schedule": "./grader.sh schedule",
+    "queue": "./grader.sh queue_status",
+    "last_run": "./grader.sh last_run",
+    "best_run": "./grader.sh best_run"
   },
   "keywords": [],
   "author": "",
