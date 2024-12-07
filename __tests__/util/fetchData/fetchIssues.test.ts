@@ -4,8 +4,6 @@ import { fetchIssues } from '../../../src/util/fetchData';
 
 vi.mock('axios');
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-
 describe('fetchIssues', () => {
     const issuesUrl = 'https://api.github.com/repos/user/repo';
     const headers = {
@@ -15,7 +13,7 @@ describe('fetchIssues', () => {
 
     it('should return the count of open and closed issues and their durations', async () => {
         // Mock paginated responses
-        mockedAxios.get
+        vi.mocked(axios.get)
             .mockResolvedValueOnce({
                 data: [
                     {
@@ -42,11 +40,11 @@ describe('fetchIssues', () => {
             closedIssues: 2,
             issueDurations: [4, 1], // Durations in days
         });
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should handle empty issue data gracefully', async () => {
-        mockedAxios.get.mockResolvedValue({ data: [] });
+        vi.mocked(axios.get).mockResolvedValue({ data: [] });
 
         const result = await fetchIssues(issuesUrl, headers);
 
@@ -55,18 +53,18 @@ describe('fetchIssues', () => {
             closedIssues: 0,
             issueDurations: [],
         });
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should handle API errors gracefully', async () => {
-        mockedAxios.get.mockRejectedValue(new Error('API error'));
+        vi.mocked(axios.get).mockRejectedValue(new Error('API error'));
 
         await expect(fetchIssues(issuesUrl, headers)).rejects.toThrow('API error');
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should calculate durations correctly for issues closed on the same day', async () => {
-        mockedAxios.get.mockResolvedValueOnce({
+        vi.mocked(axios.get).mockResolvedValueOnce({
             data: [
                 {
                     created_at: '2024-01-01T00:00:00Z',
@@ -74,7 +72,7 @@ describe('fetchIssues', () => {
                 },
             ],
         });
-        mockedAxios.get.mockResolvedValue({ data: [] }); // No more data
+        vi.mocked(axios.get).mockResolvedValue({ data: [] }); // No more data
 
         const result = await fetchIssues(issuesUrl, headers);
 
@@ -83,11 +81,11 @@ describe('fetchIssues', () => {
             closedIssues: 1,
             issueDurations: [1], // Duration in days (same day)
         });
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should correct the URL and fetch issues', async () => {
-        mockedAxios.get
+        vi.mocked(axios.get)
             .mockResolvedValueOnce({
                 data: [
                     {
@@ -106,7 +104,7 @@ describe('fetchIssues', () => {
             closedIssues: 1,
             issueDurations: [2], // Duration in days
         });
-        expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect(axios.get).toHaveBeenCalledWith(
             `${correctedUrl}?page=1&per_page=100&state=all`,
             { headers }
         );

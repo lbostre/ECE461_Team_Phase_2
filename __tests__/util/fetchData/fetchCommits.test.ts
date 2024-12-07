@@ -4,8 +4,6 @@ import { fetchCommits } from '../../../src/util/fetchData';
 
 vi.mock('axios');
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-
 describe('fetchCommits', () => {
     const commitsUrl = 'https://api.github.com/repos/user/repo';
     const headers = {
@@ -15,7 +13,7 @@ describe('fetchCommits', () => {
 
     it('should return unique contributors from paginated commits', async () => {
         // Mock paginated responses
-        mockedAxios.get
+        vi.mocked(axios.get)
             .mockResolvedValueOnce({
                 data: [
                     { author: { login: 'user1' } },
@@ -37,27 +35,27 @@ describe('fetchCommits', () => {
             ['user2', 1],
             ['user3', 1],
         ]);
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should handle empty commit data gracefully', async () => {
-        mockedAxios.get.mockResolvedValue({ data: [] });
+        vi.mocked(axios.get).mockResolvedValue({ data: [] });
 
         const result = await fetchCommits(commitsUrl, headers);
 
         expect(result).toEqual([]);
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should handle API errors gracefully', async () => {
-        mockedAxios.get.mockRejectedValue(new Error('API error'));
+        vi.mocked(axios.get).mockRejectedValue(new Error('API error'));
 
         await expect(fetchCommits(commitsUrl, headers)).rejects.toThrow('API error');
-        expect(mockedAxios.get).toHaveBeenCalled();
+        expect(axios.get).toHaveBeenCalled();
     });
 
     it('should correct the URL and fetch commits', async () => {
-        mockedAxios.get
+        vi.mocked(axios.get)
             .mockResolvedValueOnce({
                 data: [
                     { author: { login: 'user1' } },
@@ -73,7 +71,7 @@ describe('fetchCommits', () => {
             ['user1', 1],
             ['user2', 1],
         ]);
-        expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect(axios.get).toHaveBeenCalledWith(
             `${correctedUrl}?page=1&per_page=100`,
             { headers }
         );
