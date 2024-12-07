@@ -94,6 +94,16 @@ describe('handlePackageByRegEx', () => {
     expect(responseBody.error).toBe('The provided RegEx pattern is invalid.');
   });
 
+  it('should return 400 if the regex in the request body is not a string', async () => {
+    const invalidBody = JSON.stringify({ RegEx: 1 });
+
+    const result = await handlePackageByRegEx(invalidBody, ddbMock as unknown as DynamoDBDocumentClient);
+
+    expect(result.statusCode).toBe(400);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('There is missing field(s) in the PackageRegEx or it is formed improperly, or is invalid.');
+  });
+
   it('should return 404 if no package is found under the regex', async () => {
     ddbMock.on(ScanCommand).resolves(mockResponse);
     vi.mocked(fetchReadmesBatch).mockResolvedValue({
