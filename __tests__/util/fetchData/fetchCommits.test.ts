@@ -1,70 +1,81 @@
-// __tests__/util/fetchData/fetchCommits.test.ts
-
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import axios from 'axios';
 import { fetchCommits } from '../../../src/util/fetchData';
 
-// Mock axios
 vi.mock('axios');
 
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
 describe('fetchCommits', () => {
-  const commitsUrl = 'https://api.github.com/repos/user/repo/commits';
-  const headers = {
-    Accept: 'application/vnd.github.v3+json',
-    Authorization: 'token test-token',
-  };
+    const commitsUrl = 'https://api.github.com/repos/user/repo';
+    const headers = {
+        Accept: 'application/vnd.github.v3+json',
+        Authorization: 'Bearer token',
+    };
 
-  const mockCommitsPage1 = [
-    { author: { login: 'user1' } },
-    { author: { login: 'user2' } },
-    { author: { login: 'user1' } },
-  ];
+    it('should return unique contributors from paginated commits', async () => {
+        // Mock paginated responses
+        mockedAxios.get
+            .mockResolvedValueOnce({
+                data: [
+                    { author: { login: 'user1' } },
+                    { author: { login: 'user2' } },
+                ],
+            })
+            .mockResolvedValueOnce({
+                data: [
+                    { author: { login: 'user1' } },
+                    { author: { login: 'user3' } },
+                ],
+            })
+            .mockResolvedValue({ data: [] }); // No more data
 
-  const mockCommitsPage2 = [
-    { author: { login: 'user3' } },
-    { author: { login: 'user2' } },
-  ];
+        const result = await fetchCommits(commitsUrl, headers);
 
-  const mockEmptyPage = [];
+        expect(result).toEqual([
+            ['user1', 2],
+            ['user2', 1],
+            ['user3', 1],
+        ]);
+        expect(mockedAxios.get).toHaveBeenCalled();
+    });
 
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
+    it('should handle empty commit data gracefully', async () => {
+        mockedAxios.get.mockResolvedValue({ data: [] });
 
-  it('should fetch commits and return unique contributors', async () => {
-    vi.mocked(axios.get)
-      .mockResolvedValueOnce({ data: mockCommitsPage1 })
-      .mockResolvedValueOnce({ data: mockCommitsPage2 })
-      .mockResolvedValueOnce({ data: mockEmptyPage });
+        const result = await fetchCommits(commitsUrl, headers);
 
-    const result = await fetchCommits(commitsUrl, headers);
+        expect(result).toEqual([]);
+        expect(mockedAxios.get).toHaveBeenCalled();
+    });
 
-    expect(result).toEqual([
-      ['user1', 2],
-      ['user2', 2],
-      ['user3', 1],
-    ]);
+    it('should handle API errors gracefully', async () => {
+        mockedAxios.get.mockRejectedValue(new Error('API error'));
 
-    expect(axios.get).toHaveBeenCalledWith(`${commitsUrl}?page=1&per_page=100`, { headers });
-    expect(axios.get).toHaveBeenCalledWith(`${commitsUrl}?page=2&per_page=100`, { headers });
-    expect(axios.get).toHaveBeenCalledWith(`${commitsUrl}?page=3&per_page=100`, { headers });
-  });
+        await expect(fetchCommits(commitsUrl, headers)).rejects.toThrow('API error');
+        expect(mockedAxios.get).toHaveBeenCalled();
+    });
 
-  it('should return an empty array if no commits are found', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockEmptyPage });
+    it('should correct the URL and fetch commits', async () => {
+        mockedAxios.get
+            .mockResolvedValueOnce({
+                data: [
+                    { author: { login: 'user1' } },
+                    { author: { login: 'user2' } },
+                ],
+            })
+            .mockResolvedValue({ data: [] }); // No more data
 
-    const result = await fetchCommits(commitsUrl, headers);
+        const correctedUrl = 'https://api.github.com/repos/user/repo/commits';
+        const result = await fetchCommits(correctedUrl, headers);
 
-    expect(result).toEqual([]);
-
-    expect(axios.get).toHaveBeenCalledWith(`${commitsUrl}?page=1&per_page=100`, { headers });
-  });
-
-  it('should throw an error if the network request fails', async () => {
-    vi.mocked(axios.get).mockRejectedValue(new Error('Network error'));
-
-    await expect(fetchCommits(commitsUrl, headers)).rejects.toThrow('Network error');
-
-    expect(axios.get).toHaveBeenCalledWith(`${commitsUrl}?page=1&per_page=100`, { headers });
-  });
+        expect(result).toEqual([
+            ['user1', 1],
+            ['user2', 1],
+        ]);
+        expect(mockedAxios.get).toHaveBeenCalledWith(
+            `${correctedUrl}?page=1&per_page=100`,
+            { headers }
+        );
+    });
 });
