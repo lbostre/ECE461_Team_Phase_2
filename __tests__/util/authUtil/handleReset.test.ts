@@ -8,7 +8,7 @@ vi.mock('jsonwebtoken', async (importOriginal) => {
   const jwt = await importOriginal();
   return {
     default: {
-      ...jwt,
+      ...jwt.default,
       verify: vi.fn(),
     },
   };

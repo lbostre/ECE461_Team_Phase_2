@@ -125,4 +125,24 @@ describe('fetchCostWithGraphQL', () => {
     expect(axios.get).toHaveBeenCalledWith(packageJsonUrl);
     expect(axios.post).toHaveBeenCalled();
   });
+
+  it('should throw an error if repoData is missing in the GraphQL response', async () => {
+    const mockErrorResponse = {
+      data: {
+        data: {
+          repository: null,
+        },
+      },
+    };
+
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockPackageJson });
+    vi.mocked(axios.post).mockResolvedValueOnce(mockErrorResponse);
+
+    await expect(fetchCostWithGraphQL(repoUrl, true)).rejects.toThrow(
+      'Repository data is missing in GraphQL response.'
+    );
+
+    expect(axios.get).toHaveBeenCalledWith(packageJsonUrl);
+    expect(axios.post).toHaveBeenCalled();
+  });
 });
