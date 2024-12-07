@@ -2,19 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { handleReset } from '../../../src/util/authUtil'; // Adjust import path
-
-// Mock jsonwebtoken with proper default export
-vi.mock('jsonwebtoken', async (importOriginal) => {
-  const jwt = await importOriginal();
-  return {
-    default: {
-      ...jwt.default,
-      verify: vi.fn(),
-    },
-  };
-});
-
 import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
+const validAdminAuthToken = jwt.sign({ name: 'testadminuser', isAdmin: true }, JWT_SECRET);
+const validRegularAuthToken = jwt.sign({ name: 'testuser', isAdmin: false }, JWT_SECRET);
+const invalidAuthToken = 'invalid-auth-token';
 
 // Create a mock client for DynamoDBDocumentClient
 const dynamoDbMock = mockClient(DynamoDBDocumentClient);
@@ -23,22 +16,17 @@ describe('handleReset function', () => {
   const JWT_SECRET = 'test-secret';
 
   beforeEach(() => {
-    // Clear all mocks before each test
     dynamoDbMock.reset();
-    (jwt.verify as vi.Mock).mockClear();
   });
 
   it('should successfully reset the registry for an admin user', async () => {
-    // Mock an admin token
-    (jwt.verify as vi.Mock).mockReturnValue({ isAdmin: true });
-
     // Mock scan command to return empty items for each table
     dynamoDbMock.on(ScanCommand).resolves({ Items: [] });
 
     // Mock put command for default admin user
     dynamoDbMock.on(PutCommand).resolves({});
 
-    const result = await handleReset('bearer admin-token', dynamoDbMock);
+    const result = await handleReset(validAdminAuthToken, dynamoDbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).message).toBe('Registry is reset.');
@@ -72,34 +60,25 @@ describe('handleReset function', () => {
 
   it('should return 401 if the user is not an admin', async () => {
     // Mock a non-admin token
-    (jwt.verify as vi.Mock).mockReturnValue({ isAdmin: false });
 
-    const result = await handleReset('bearer non-admin-token', dynamoDbMock);
+    const result = await handleReset(validRegularAuthToken, dynamoDbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(401);
     expect(JSON.parse(result.body).error).toBe('You do not have permission to reset the registry.');
   });
 
   it('should handle errors during table clearing', async () => {
-    // Mock an admin token
-    (jwt.verify as vi.Mock).mockReturnValue({ isAdmin: true });
-
     // Simulate an error during table clearing
     dynamoDbMock.on(ScanCommand).rejects(new Error('Database scan error'));
 
-    const result = await handleReset('bearer admin-token', dynamoDbMock);
+    const result = await handleReset(validAdminAuthToken, dynamoDbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).error).toBe('Internal Server Error');
   });
 
   it('should handle JWT verification errors', async () => {
-    // Simulate JWT verification failure
-    (jwt.verify as vi.Mock).mockImplementation(() => {
-      throw new Error('Invalid token');
-    });
-
-    const result = await handleReset('bearer invalid-token', dynamoDbMock);
+    const result = await handleReset(invalidAuthToken, dynamoDbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).error).toBe('Internal Server Error');
