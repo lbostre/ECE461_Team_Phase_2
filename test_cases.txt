@@ -19,3 +19,4 @@ https://github.com/47ng/nuqs
 https://github.com/microcks/microcks
 https://github.com/vitest-dev/vitest
 https://github.com/Gokul-H7/Group27_461_Project
+https://www.npmjs.com/package/@sveltejs/package
