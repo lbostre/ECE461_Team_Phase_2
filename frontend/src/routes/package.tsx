@@ -46,11 +46,20 @@ export type Ratings = {
     ResponsiveMaintainer_Latency: number;
 };
 
+type CostData = Record<
+    string,
+    {
+        standaloneCost?: number; // Optional since it might not exist
+        totalCost: number; // Always required
+    }
+>;
+
 export default function Package() {
     let { name } = useParams();
     const token = getAuthToken();
     const [packageData, setPackageData] = useState<PackageSchema>();
     const [ratingsData, setRatingsData] = useState<Ratings>();
+    const [costData, seCostData] = useState<CostData>();
     const formattedName = packageData?.metadata?.Name
         ? packageData.metadata.Name.charAt(0).toUpperCase() +
           packageData.metadata.Name.slice(1).toLowerCase()
@@ -77,6 +86,16 @@ export default function Package() {
                 }
             );
             setRatingsData(ratingsResponse.data.PackageRating);
+            const costResponse = await axios.get(
+                `${import.meta.env.VITE_API_URL}/package/${name}/cost`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Authorization": token,
+                    },
+                }
+            );
+            seCostData(costResponse.data);
         };
         fetchData();
     }, [name]);
@@ -100,7 +119,51 @@ export default function Package() {
                         Download
                     </Button>
                 </div>
-
+                <div className="flex flex-col gap-2">
+                    <h1 className="font-bold text-lg">Cost</h1>
+                    <div className="border rounded-md overflow-hidden">
+                        {costData && (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[300px]">
+                                            ID
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Standalone Cost
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Total Cost
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {Object.entries(costData).map(
+                                        ([id, costs]) => (
+                                            <TableRow key={id}>
+                                                <TableCell className="font-medium">
+                                                    {id}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {costs.standaloneCost !==
+                                                    undefined
+                                                        ? costs.standaloneCost
+                                                        : "N/A"}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {costs.totalCost !==
+                                                    undefined
+                                                        ? costs.totalCost
+                                                        : "N/A"}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                </div>
                 <div className="flex flex-col gap-2">
                     <h1 className="font-bold text-lg">Ratings</h1>
                     <div className="border rounded-md overflow-hidden">

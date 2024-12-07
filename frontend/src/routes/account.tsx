@@ -1,4 +1,5 @@
 import CreateUser from "@/components/CreateUser";
+import DeleteUserButton from "@/components/DeleteUserButton";
 import { getAuthToken } from "@/utils/auth";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -70,6 +71,7 @@ export default function Account() {
                         <CreateUser />
                     </div>
                 )}
+                {userInfo && <DeleteUserButton username={userInfo?.name} />}
             </div>
         </div>
     );

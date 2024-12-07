@@ -35,6 +35,7 @@ export default function Login() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             username: "",
+            isAdmin: false,
         },
     });
 
@@ -58,6 +59,7 @@ export default function Login() {
 
             // Assuming the token is in the response data
             const token = response.data.token;
+            console.log(JSON.stringify(requestBody), token);
             if (token) {
                 // Store the token securely (use secure storage in production if possible)
                 localStorage.setItem("authToken", token);

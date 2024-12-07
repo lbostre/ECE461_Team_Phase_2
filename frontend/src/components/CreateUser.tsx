@@ -16,7 +16,6 @@ import { useState } from "react";
 import { FaCheckCircle } from "react-icons/fa";
 import { Switch } from "./ui/switch";
 import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox from ShadCN's components
-import { group } from "console";
 import axios from "axios";
 import { getAuthToken } from "@/utils/auth";
 
@@ -68,7 +67,7 @@ export default function CreateUser() {
                 password: values.password,
                 isAdmin: values.isAdmin,
                 permissions: values.permissions, // Example permissions
-                group: group, // Example group
+                group: values.group, // Example group
             };
 
             console.log(
