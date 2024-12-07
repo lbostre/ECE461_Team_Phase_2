@@ -100,4 +100,10 @@ describe('getCaratPackages', () => {
     });
     expect(commandCalls.length).toBe(1);
   });
+
+  it('should throw an error if version is not provided', async () => {
+    await expect(getCaratPackages(name, '', ddbMock as unknown as DynamoDBDocumentClient)).rejects.toThrow('Version must be provided');
+
+    expect(ddbMock.commandCalls(ScanCommand).length).toBe(0);
+  });
 });

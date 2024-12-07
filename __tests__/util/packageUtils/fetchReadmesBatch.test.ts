@@ -66,4 +66,18 @@ describe('fetchReadmesBatch', () => {
 
     expect(axios.post).toHaveBeenCalled();
   });
+
+  it('should throw an error if response.data.errors is present', async () => {
+    const mockErrorResponse = {
+      data: {
+        errors: ['Some error occurred'],
+      },
+    };
+
+    vi.mocked(axios.post).mockResolvedValue(mockErrorResponse);
+
+    await expect(fetchReadmesBatch(githubUrls)).rejects.toThrow('Failed to fetch README files.');
+
+    expect(axios.post).toHaveBeenCalled();
+  });
 });
