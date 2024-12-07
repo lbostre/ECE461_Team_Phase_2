@@ -62,32 +62,40 @@ describe('handlePackageUpdate', () => {
   const headers = { 'X-Authorization': validAuthToken };
 
   const validRepoData = {
-    BusFactor: 0.8,             // Bus factor score
-    BusFactor_Latency: 100,     // Latency time for bus factor calculation
-    Correctness: 0.9,           // Correctness score
-    Correctness_Latency: 150,   // Latency time for correctness calculation
-    RampUp: 0.7,                // Ramp-up time score
-    RampUp_Latency: 200,        // Latency time for ramp-up score calculation
-    ResponsiveMaintainer: 0.85, // Responsiveness score
-    ResponsiveMaintainer_Latency: 120, // Latency time for responsiveness calculation
-    License: 0.95,              // License compatibility score
-    License_Latency: 80,        // Latency time for license compatibility calculation
-    NetScore: 0.88,             // Overall score
-    NetScore_Latency: 250,      // Latency time for score calculation
+    BusFactor: 0.8,             
+    BusFactorLatency: 100,     
+    Correctness: 0.9,           
+    CorrectnessLatency: 150,   
+    RampUp: 0.7,                
+    RampUpLatency: 200,        
+    ResponsiveMaintainer: 0.85, 
+    ResponsiveMaintainerLatency: 120, 
+    LicenseScore: 0.95,              
+    LicenseScoreLatency: 80,        
+    GoodPinningPractice: 0.9,
+    GoodPinningPracticeLatency: 110,
+    PullRequest: 0.75,
+    PullRequestLatency: 130,
+    NetScore: 0.88,              
+    NetScoreLatency: 250,      
   };
   const invalidRepoData = {
-    BusFactor: 0.8,             // Bus factor score
-    BusFactor_Latency: 100,     // Latency time for bus factor calculation
-    Correctness: 0.9,           // Correctness score
-    Correctness_Latency: 150,   // Latency time for correctness calculation
-    RampUp: 0.7,                // Ramp-up time score
-    RampUp_Latency: 200,        // Latency time for ramp-up score calculation
-    ResponsiveMaintainer: 0.85, // Responsiveness score
-    ResponsiveMaintainer_Latency: 120, // Latency time for responsiveness calculation
-    License: 0.95,              // License compatibility score
-    License_Latency: 80,        // Latency time for license compatibility calculation
-    NetScore: 0.45,             // Overall score
-    NetScore_Latency: 250,      // Latency time for score calculation
+    BusFactor: 0.8,             
+    BusFactorLatency: 100,     
+    Correctness: 0.9,           
+    CorrectnessLatency: 150,   
+    RampUp: 0.7,                
+    RampUpLatency: 200,        
+    ResponsiveMaintainer: 0.85, 
+    ResponsiveMaintainerLatency: 120, 
+    LicenseScore: 0.95,              
+    LicenseScoreLatency: 80,        
+    GoodPinningPractice: 0.9,
+    GoodPinningPracticeLatency: 110,
+    PullRequest: 0.75,
+    PullRequestLatency: 130,
+    NetScore: 0.45,              
+    NetScoreLatency: 250,      
   };
 
   const mockPackageData = {
