@@ -354,9 +354,15 @@ export async function handleReset(
             };
         }
 
-        await clearTable("ECE461_UsersTable", dynamoDb);
-        await clearTable("ECE461_PackagesTable", dynamoDb);
-        await clearTable("ECE461_CostsTable", dynamoDb);
+        // Clear tables and handle errors
+        const clear_results = await Promise.all([
+            clearTable("ECE461_UsersTable", dynamoDb),
+            clearTable("ECE461_PackagesTable", dynamoDb),
+            clearTable("ECE461_CostsTable", dynamoDb),
+        ]);
+        if (clear_results.some((result) => result instanceof Error)) {
+            throw new Error("Error clearing tables.");
+        }
 
         const defaultAdmin = {
             username: "ece30861defaultadminuser",
