@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "./ui/textarea";
+import { getAuthToken } from "@/utils/auth";
 
 const formSchema = z.object({
     url: z
@@ -45,18 +46,19 @@ export function UploadFormURL() {
     });
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log(import.meta.env.VITE_API_URL + "/package");
+        // console.log(import.meta.env.VITE_API_URL + "/package");
+        const token = getAuthToken();
         const response = await axios.post(
-            // `${import.meta.env.VITE_API_URL}/package`,
-            "https://lbuuau0feg.execute-api.us-east-1.amazonaws.com/dev/package",
+            `${import.meta.env.VITE_API_URL}/package`,
             values,
             {
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdHVzZXIiLCJpc0FkbWluIjp0cnVlLCJpYXQiOjE3MzMzNDQ3NjQsImV4cCI6MTczMzM4MDc2NH0.rKFFSbKZpJSH2L8sQCyR4JJZxusCO22HbCsq4YcuN08",
+                    "X-Authorization": token,
                 },
             }
         );
+
         console.log(response);
     }
 

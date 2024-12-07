@@ -7,22 +7,100 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { getAuthToken } from "@/utils/auth";
+import { downloadFile } from "@/utils/downloadFile";
+import axios from "axios";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+
+type PackageMetadata = {
+    Name: string;
+    Version: string;
+    ID: string;
+};
+
+type PackageData = {
+    URL: string;
+    JSProgram: string;
+    Content: string;
+};
+
+type PackageSchema = {
+    metadata: PackageMetadata;
+    data: PackageData;
+};
+
+// Type for the ratings object
+export type Ratings = {
+    License_Latency: number;
+    Correctness_Latency: number;
+    NetScore: number;
+    License: number;
+    ResponsiveMaintainer: number;
+    BusFactor_Latency: number;
+    RampUp: number;
+    RampUp_Latency: number;
+    NetScore_Latency: number;
+    BusFactor: number;
+    Correctness: number;
+    ResponsiveMaintainer_Latency: number;
+};
 
 export default function Package() {
     let { name } = useParams();
-    const formattedName =
-        String(name).charAt(0).toUpperCase() + String(name).slice(1);
+    const token = getAuthToken();
+    const [packageData, setPackageData] = useState<PackageSchema>();
+    const [ratingsData, setRatingsData] = useState<Ratings>();
+    const formattedName = packageData?.metadata?.Name
+        ? packageData.metadata.Name.charAt(0).toUpperCase() +
+          packageData.metadata.Name.slice(1).toLowerCase()
+        : "";
+    useEffect(() => {
+        const fetchData = async () => {
+            const packageResponse = await axios.get(
+                `${import.meta.env.VITE_API_URL}/package/${name}`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Authorization": token,
+                    },
+                }
+            );
+            setPackageData(packageResponse.data);
+            const ratingsResponse = await axios.get(
+                `${import.meta.env.VITE_API_URL}/package/${name}/rate`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Authorization": token,
+                    },
+                }
+            );
+            setRatingsData(ratingsResponse.data.PackageRating);
+        };
+        fetchData();
+    }, [name]);
+    const handleDownload = () => {
+        if (packageData?.data.Content) {
+            downloadFile(packageData.data.Content, packageData.metadata.Name);
+        } else {
+            console.error("Content is undefined");
+        }
+    };
     return (
         <div className="flex flex-col items-center justify-center w-screen p-10">
             <div className="flex flex-col gap-4 w-[600px] h-fit">
-                <div className="flex flex-row justify-between items-center">
+                <div className="flex flex-row justify-between items-center mt-12">
                     <div className="flex flex-col gap-1">
                         <h1 className="font-bold text-2xl">{formattedName}</h1>
-                        <h5>Version 1.0.0</h5>
+                        <h5>Version {packageData?.metadata.Version}</h5>
+                        <h5>id: {packageData?.metadata.ID}</h5>
                     </div>
-                    <Button className="w-fit">Download</Button>
+                    <Button className="w-fit" onClick={handleDownload}>
+                        Download
+                    </Button>
                 </div>
+
                 <div className="flex flex-col gap-2">
                     <h1 className="font-bold text-lg">Ratings</h1>
                     <div className="border rounded-md overflow-hidden">
@@ -32,8 +110,6 @@ export default function Package() {
                                     <TableHead className="w-[300px]">
                                         Metric
                                     </TableHead>
-                                    {/* <TableHead>Status</TableHead>
-                                    <TableHead>Method</TableHead> */}
                                     <TableHead className="text-right">
                                         Rating
                                     </TableHead>
@@ -45,7 +121,8 @@ export default function Package() {
                                         Bus Factor
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.BusFactor?.toFixed(3) ||
+                                            0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -53,7 +130,9 @@ export default function Package() {
                                         Bus Factor Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.BusFactor_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -61,7 +140,8 @@ export default function Package() {
                                         Correctness
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.Correctness?.toFixed(3) ||
+                                            0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -69,7 +149,9 @@ export default function Package() {
                                         Correctness Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.Correctness_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -77,7 +159,7 @@ export default function Package() {
                                         Ramp Up
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.RampUp?.toFixed(3) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -85,7 +167,9 @@ export default function Package() {
                                         Ramp Up Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.RampUp_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -93,7 +177,9 @@ export default function Package() {
                                         Responsive Maintainer
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.ResponsiveMaintainer?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -101,7 +187,9 @@ export default function Package() {
                                         Responsive Maintainer Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.ResponsiveMaintainer_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -109,7 +197,7 @@ export default function Package() {
                                         License Score
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.License?.toFixed(3) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -117,7 +205,9 @@ export default function Package() {
                                         License Score Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.License_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -125,7 +215,7 @@ export default function Package() {
                                         Good Pinning Practice
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.NetScore?.toFixed(3) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -133,7 +223,9 @@ export default function Package() {
                                         Good Pinning Practice Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.NetScore_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -141,7 +233,8 @@ export default function Package() {
                                         Pull Request
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.BusFactor?.toFixed(3) ||
+                                            0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -149,7 +242,9 @@ export default function Package() {
                                         Pull Request Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.NetScore_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -157,7 +252,7 @@ export default function Package() {
                                         Net Score
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.NetScore?.toFixed(3) || 0}
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -165,7 +260,9 @@ export default function Package() {
                                         Net Score Latency
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        0
+                                        {ratingsData?.NetScore_Latency?.toFixed(
+                                            3
+                                        ) || 0}
                                     </TableCell>
                                 </TableRow>
                             </TableBody>

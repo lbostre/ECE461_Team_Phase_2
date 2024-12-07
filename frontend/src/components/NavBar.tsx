@@ -7,7 +7,8 @@ import {
     NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
-import SignInButton from "./SignInButton";
+import { IoPersonCircleOutline } from "react-icons/io5";
+import { Button } from "./ui/button";
 
 export default function NavBar() {
     return (
@@ -27,7 +28,12 @@ export default function NavBar() {
                     </NavigationMenuItem>
                 </NavigationMenuList>
             </NavigationMenu>
-            <SignInButton />
+            <Link to={"/account"}>
+                <Button className="flex items-center gap-2">
+                    <IoPersonCircleOutline className="text-lg" />
+                    <span className="text-sm">Account</span>
+                </Button>
+            </Link>
         </header>
     );
 }

@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import SignIn from "./SignIn";
-import SignUp from "./SignUp";
 
 export default function SignInButton() {
     const [isOpen, setIsOpen] = useState(false);
-    const [isSignUp, setIsSignUp] = useState(false);
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -18,19 +16,7 @@ export default function SignInButton() {
                 </button>
             </DialogTrigger>
             <DialogContent className="px-8 py-6">
-                {isSignUp ? (
-                    <SignUp setIsOpen={setIsOpen} />
-                ) : (
-                    <SignIn setIsOpen={setIsOpen} />
-                )}
-                <button
-                    className="text-blue-500 hover:underline mt-2 text-sm"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                >
-                    {isSignUp
-                        ? "Already have an account?"
-                        : "Don't have an account?"}
-                </button>
+                <SignIn setIsOpen={setIsOpen} />
             </DialogContent>
         </Dialog>
     );

@@ -6,11 +6,14 @@ import Root from "./routes/root.tsx";
 import Upload from "./routes/upload.tsx";
 import Package from "./routes/package.tsx";
 import Layout from "./components/Layout.tsx";
+import Packages from "./routes/packages.tsx";
+import Login from "./routes/login.tsx";
+import Account from "./routes/account.tsx";
 
 const router = createBrowserRouter([
     {
         path: "/",
-        element: <Layout />, // Use Layout here
+        element: <Layout />, // Layout for most routes
         children: [
             {
                 path: "/",
@@ -24,7 +27,19 @@ const router = createBrowserRouter([
                 path: "/package/:name",
                 element: <Package />,
             },
+            {
+                path: "/packages",
+                element: <Packages />,
+            },
+            {
+                path: "/account",
+                element: <Account />,
+            },
         ],
+    },
+    {
+        path: "/login",
+        element: <Login />, // Login route without Layout
     },
 ]);
 

@@ -15,11 +15,11 @@ import { Input } from "./ui/input";
 import { DialogHeader } from "./ui/dialog";
 
 const formSchema = z.object({
-    username: z.string().email({
-        message: "Invalid email address.",
+    username: z.string().min(1, {
+        message: "Username must be at least 1 character.",
     }),
-    password: z.string().min(8, {
-        message: "Password must be at least 8 characters.",
+    password: z.string().min(1, {
+        message: "Password must be at least 1 character.",
     }),
 });
 
@@ -61,16 +61,16 @@ export default function SignIn(props: SignInProps) {
                         name="username"
                         render={({ field }) => (
                             <FormItem className="w-full">
-                                <FormLabel>Email</FormLabel>
+                                <FormLabel>Username</FormLabel>
                                 <FormControl>
                                     <Input
-                                        type="email"
-                                        placeholder="Enter your email"
+                                        type="text"
+                                        placeholder="Enter your username"
                                         {...field}
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    Your email address to log in.
+                                    Your username to log in.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
