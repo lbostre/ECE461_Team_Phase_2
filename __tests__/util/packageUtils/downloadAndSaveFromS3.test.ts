@@ -2,9 +2,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, GetObjectCommandOutput } from '@aws-sdk/client-s3';
 import { mockClient } from 'aws-sdk-client-mock';
 import { downloadAndSaveFromS3 } from '../../../src/util/packageUtils';
+import { Readable } from 'stream';
 
 // Mock the S3Client
 const s3Mock = mockClient(S3Client);
@@ -31,14 +32,13 @@ describe('downloadAndSaveFromS3', () => {
   const fileContent = 'example content';
 
   it('should download the file from S3 and save it to local storage', async () => {
+    // Create a readable stream from the file content
+    const mockS3Response = {
+      Body: Readable.from([Buffer.from('example content')]) as unknown as Readable,
+    } as unknown as GetObjectCommandOutput;
+
     // Mock the S3 GetObjectCommand to return a successful response
-    s3Mock.on(GetObjectCommand).resolves({
-      Body: {
-        async *[Symbol.asyncIterator]() {
-          yield Buffer.from(fileContent);
-        },
-      },
-    });
+    s3Mock.on(GetObjectCommand).resolves(mockS3Response as unknown as GetObjectCommandOutput);
 
     // Mock fs.writeFileSync to simulate successful file write
     vi.mocked(fs.writeFileSync).mockImplementation(() => {});

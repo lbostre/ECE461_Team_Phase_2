@@ -1,7 +1,7 @@
 // __tests__/util/packageUtils/fetchPackageById.test.ts
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, GetObjectCommandOutput } from '@aws-sdk/client-s3';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { fetchPackageById, streamToBuffer } from '../../../src/util/packageUtils';
@@ -55,13 +55,13 @@ describe('fetchPackageById', () => {
   };
 
   const mockS3Response = {
-    Body: Readable.from([Buffer.from('example content')]),
-  };
+    Body: Readable.from([Buffer.from('example content')]) as unknown as Readable,
+  } as unknown as GetObjectCommandOutput;
 
   beforeEach(() => {
     vi.mocked(getUserInfo).mockResolvedValue(mockUserInfo);
     ddbMock.on(GetCommand).resolves(mockDynamoResponse);
-    s3Mock.on(GetObjectCommand).resolves(mockS3Response);
+    s3Mock.on(GetObjectCommand).resolves(mockS3Response as unknown as GetObjectCommandOutput);
     vi.mocked(streamToBuffer).mockResolvedValue(Buffer.from('example content'));
   });
 
