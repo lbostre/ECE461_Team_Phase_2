@@ -43,7 +43,7 @@ download_logs() {
   # Create logs directory if it doesn't exist
   mkdir -p logs
 
-  autograder_log=$(echo "$OUTPUT_JSON" | jq -r '.["autograder_run_log"] // empty')
+  autograder_log=$(echo "$OUTPUT_JSON" | jq -r '.["autgrader_run_log"] // empty')
   if [ -n "$autograder_log" ]; then
     echo -e "\033[34mDownloading autograder run log...\033[0m"
     curl --silent --location --request GET "$BASE_URL/log/download" \
