@@ -186,45 +186,50 @@ export async function dependencyPinning(repoPath: string): Promise<{ value: numb
 }
 
 export async function codeReviewCoverage(
-    repoURL: string,
-    headers: Record<string, string>
+  repoURL: string,
+  headers: Record<string, string>
 ): Promise<{ value: number; latency: number }> {
-    const start = Date.now();
-    const pullsUrl = `${repoURL}/pulls?state=closed&per_page=100`;
+  const start = Date.now();
+  const pullsUrl = `${repoURL}/pulls?state=closed&per_page=100`;
 
-    try {
-        const pullRequestsResponse = await axios.get(pullsUrl, { headers });
-        const pullRequests = pullRequestsResponse.data;
+  try {
+    const pullRequestsResponse = await axios.get(pullsUrl, { headers });
+    const pullRequests = pullRequestsResponse.data;
 
-        if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
-            return { value: 1.0, latency: (Date.now() - start) / 1000 };
-        }
-
-        let reviewedLOC = 0;
-        let totalLOC = 0;
-
-        for (const pr of pullRequests) {
-            if (pr.merged_at && pr.requested_reviewers && pr.requested_reviewers.length > 0) {
-                const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
-                const prFilesResponse = await axios.get(prFilesUrl, { headers });
-                const prFiles = prFilesResponse.data;
-
-                const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
-                reviewedLOC += loc;
-            }
-            totalLOC += reviewedLOC;
-        }
-
-        return {
-            value: reviewedLOC / totalLOC || 0,
-            latency: (Date.now() - start) / 1000,
-        };
-    } catch (error) {
-        if (error instanceof Error) {
-            console.error('Error fetching pull requests or LOC:', error.message);
-        } else {
-            console.error(`Error fetching pull requests or LOC: ${String(error)}`);
-        }
-        return { value: 0, latency: (Date.now() - start) / 1000 };
+    if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
+      return { value: 1.0, latency: (Date.now() - start) / 1000 };
     }
+
+    let reviewedLOC = 0;
+    let totalLOC = 0;
+
+    for (const pr of pullRequests) {
+      if (pr.merged_at && pr.requested_reviewers && pr.requested_reviewers.length > 0) {
+        const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
+        const prFilesResponse = await axios.get(prFilesUrl, { headers });
+        const prFiles = prFilesResponse.data;
+
+        const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
+        reviewedLOC += loc;
+        totalLOC += loc; // Add LOC to total only if the PR is merged and reviewed
+      } else if (pr.merged_at) {
+        // If the PR is merged but not reviewed
+        const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
+        const prFilesResponse = await axios.get(prFilesUrl, { headers });
+        const prFiles = prFilesResponse.data;
+
+        const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
+        totalLOC += loc; // Add LOC to total
+      }
+      // Don't add to totalLOC if PR is not merged
+    }
+
+    // If totalLOC is 0, set coverage to 1.0
+    const coverage = totalLOC === 0 ? 1.0 : reviewedLOC / totalLOC;
+
+    return { value: coverage, latency: (Date.now() - start) / 1000 };
+  } catch (error) {
+    console.error('Error fetching code review coverage:', error);
+    return { value: 0, latency: (Date.now() - start) / 1000 };
+  }
 }
