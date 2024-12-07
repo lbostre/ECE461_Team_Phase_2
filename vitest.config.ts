@@ -15,7 +15,6 @@ export default defineConfig({
             // '__tests__/endpoints/package.test.ts',
             // Files with failing tests
             '__tests__/util/packageUtils/createPackageService.test.ts',
-            '__tests__/util/package/handlePackageUpdate.test.ts',
             // Empty files
         ],
         coverage: {
