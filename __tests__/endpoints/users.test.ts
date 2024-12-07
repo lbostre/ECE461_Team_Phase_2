@@ -201,7 +201,7 @@ describe('/users GET endpoint', () => {
     });
   });
 
-  it('should return 403 if the authentication token is missing or invalid', async () => {
+  it('should return 403 if the authentication token is invalid', async () => {
     vi.mocked(handleGetUser).mockResolvedValue({
       statusCode: 403,
       headers: {},
@@ -214,6 +214,37 @@ describe('/users GET endpoint', () => {
       httpMethod: 'GET',
       path: '/users',
       headers: { 'X-Authorization': invalidAuthToken },
+      queryStringParameters: null,
+      pathParameters: null,
+      body: null,
+      isBase64Encoded: false,
+      multiValueHeaders: {},
+      multiValueQueryStringParameters: null,
+      stageVariables: null,
+      requestContext: {} as any,
+      resource: '',
+    };
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(403);
+    const responseBody = JSON.parse(result.body);
+    expect(responseBody.error).toBe('Authentication failed due to invalid or missing AuthenticationToken.');
+  });
+
+  it('should return 403 if the authentication token is missing', async () => {
+    vi.mocked(handleGetUser).mockResolvedValue({
+      statusCode: 403,
+      headers: {},
+      body: JSON.stringify({
+        error: 'Authentication failed due to invalid or missing AuthenticationToken.',
+      }),
+    });
+
+    const event: APIGatewayProxyEvent = {
+      httpMethod: 'GET',
+      path: '/users',
+      headers: {},
       queryStringParameters: null,
       pathParameters: null,
       body: null,
