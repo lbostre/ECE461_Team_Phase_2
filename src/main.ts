@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense, cleanUpRepository } from './util/repoUtils.js';
+import { convertToApiUrl, getGithubUrlFromNpm, cloneRepo, findReadme, findLicense, cleanUpRepository, dependencyPinning, codeReviewCoverage } from './util/repoUtils.js';
 import { fetchCommits, fetchIssues } from './util/fetchData.js';
 import { busFactor } from './metrics/busFactor.js';
 import { responsiveness } from './metrics/responsiveness.js';
@@ -12,7 +12,6 @@ import { RepoDataResult } from '../types.js';
 dotenv.config();
 
 export async function getRepoData(repoURL: string): Promise<RepoDataResult | null> {
-    const clockStart = Date.now();
     console.log('Starting getRepoData with URL:', repoURL);
 
     // Validate and process GitHub URL
@@ -68,25 +67,29 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             const { openIssues, closedIssues, issueDurations } = await fetchIssues(issuesUrl, headers);
             console.log(`Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`);
 
-            // Calculate each metric in parallel
             console.log('Calculating metrics...');
             const [
-                { busFactorValue, busFactorEnd },
-                { correctnessValue, correctnessEnd },
-                { responsivenessValue, responsivenessEnd },
-                { rampUpTimeValue, rampUpTimeEnd },
-                { licenseCompatabilityValue, licenseEnd }
+                { busFactorValue, busFactorLatency },
+                { correctnessValue, correctnessLatency },
+                { responsivenessValue, responsivenessLatency },
+                { rampUpTimeValue, rampUpTimeLatency },
+                { licenseCompatabilityValue, licenseLatency },
+                { value: dependencyPinningValue, latency: dependencyPinningLatency },
+                { value: codeReviewValue, latency: codeReviewLatency }
             ] = await Promise.all([
                 busFactor(uniqueContributors),
                 correctness(openIssues, closedIssues),
                 responsiveness(issueDurations),
                 rampUpTime(readme),
-                licensing(license)
+                licensing(license),
+                dependencyPinning(repoPath),
+                codeReviewCoverage(GITHUB_API_URL, headers)
             ]);
             console.log('Metrics calculated successfully');
 
             // Calculate overall score
             console.log('Calculating overall score...');
+            const clockStart = Date.now();
             const netScore = await calculateScore(
                 busFactorValue,
                 responsivenessValue,
@@ -97,26 +100,23 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             const scoreEnd = Date.now();
             console.log('Score calculated:', netScore);
 
-            // Calculate and log latency for each metric
-            const busFactorLatency = (busFactorEnd - clockStart) / 1000;
-            const correctnessLatency = (correctnessEnd - clockStart) / 1000;
-            const responsivenessLatency = (responsivenessEnd - clockStart) / 1000;
-            const rampUpTimeLatency = (rampUpTimeEnd - clockStart) / 1000;
-            const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
-
             const result: RepoDataResult = {
                 BusFactor: busFactorValue,
-                BusFactor_Latency: busFactorLatency,
+                BusFactorLatency: busFactorLatency,
                 Correctness: correctnessValue,
-                Correctness_Latency: correctnessLatency,
+                CorrectnessLatency: correctnessLatency,
                 RampUp: rampUpTimeValue,
-                RampUp_Latency: rampUpTimeLatency,
+                RampUpLatency: rampUpTimeLatency,
                 ResponsiveMaintainer: responsivenessValue,
-                ResponsiveMaintainer_Latency: responsivenessLatency,
-                License: licenseCompatabilityValue,
-                License_Latency: licenseCompatabilityLatency,
+                ResponsiveMaintainerLatency: responsivenessLatency,
+                LicenseScore: licenseCompatabilityValue,
+                LicenseScoreLatency: licenseLatency,
+                GoodPinningPractice: dependencyPinningValue,
+                GoodPinningPracticeLatency: dependencyPinningLatency,
+                PullRequest: codeReviewValue,
+                PullRequestLatency: codeReviewLatency,
                 NetScore: netScore,
-                NetScore_Latency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseCompatabilityLatency,
+                NetScoreLatency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + licenseLatency,
             };
             console.log('Final Result:', result);
             return result;

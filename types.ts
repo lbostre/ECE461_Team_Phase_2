@@ -32,17 +32,21 @@ export interface Package {
 
 export interface RepoDataResult {
     BusFactor: number;             // Bus factor score
-    BusFactor_Latency: number;     // Latency time for bus factor calculation
+    BusFactorLatency: number;     // Latency time for bus factor calculation
     Correctness: number;           // Correctness score
-    Correctness_Latency: number;   // Latency time for correctness calculation
+    CorrectnessLatency: number;   // Latency time for correctness calculation
     RampUp: number;                // Ramp-up time score
-    RampUp_Latency: number;        // Latency time for ramp-up score calculation
+    RampUpLatency: number;        // Latency time for ramp-up score calculation
     ResponsiveMaintainer: number;  // Responsiveness score
-    ResponsiveMaintainer_Latency: number; // Latency time for responsiveness calculation
-    License: number;               // License compatibility score
-    License_Latency: number;       // Latency time for license compatibility calculation
+    ResponsiveMaintainerLatency: number; // Latency time for responsiveness calculation
+    LicenseScore: number;               // License compatibility score
+    LicenseScoreLatency: number;       // Latency time for license compatibility calculation
+    GoodPinningPractice: number;
+    GoodPinningPracticeLatency: number;
+    PullRequest: number;
+    PullRequestLatency: number;
     NetScore: number;              // Overall score
-    NetScore_Latency: number;      // Latency time for score calculation
+    NetScoreLatency: number;      // Latency time for score calculation
 }
 
 export interface AuthenticationRequest {

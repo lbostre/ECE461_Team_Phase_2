@@ -1,6 +1,7 @@
 export const ACCUMULATION = 0.975;
 
 export async function busFactor(uniqueContributors: any[]) {
+  const clockStart = Date.now();
   uniqueContributors.sort((a: number[], b: number[]) => b[1] - a[1]);
   
   let totalContributors = uniqueContributors.length;
@@ -16,6 +17,6 @@ export async function busFactor(uniqueContributors: any[]) {
     cumulativeContributors++;
   }
 
-  if (cumulativeContributors === 0) return { busFactorValue: 0, busFactorEnd: Date.now() };
-  else return { busFactorValue: cumulativeContributors / totalContributors, busFactorEnd: Date.now() };
+  if (cumulativeContributors === 0) return { busFactorValue: 0, busFactorLatency: (Date.now() - clockStart) / 1000 };
+  else return { busFactorValue: cumulativeContributors / totalContributors, busFactorLatency: (Date.now() - clockStart) / 1000 };
 }

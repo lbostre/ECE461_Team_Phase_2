@@ -151,3 +151,80 @@ export function identifyLicense(content: string) {
 
     return null;
 }
+
+export async function dependencyPinning(repoPath: string): Promise<{ value: number; latency: number }> {
+    const start = Date.now();
+    const fs = await import('fs');
+    const path = await import('path');
+    const packageJsonPath = path.join(repoPath, 'package.json');
+
+    if (!fs.existsSync(packageJsonPath)) {
+        console.warn('No package.json found. Assigning full score for no dependencies.');
+        return { value: 1.0, latency: (Date.now() - start) / 1000 };
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const dependencies: Record<string, string> = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+    };
+
+    const totalDependencies = Object.keys(dependencies).length;
+
+    if (totalDependencies === 0) {
+        return { value: 1.0, latency: (Date.now() - start) / 1000 };
+    }
+
+    const pinnedDependencies = Object.values(dependencies).filter((version) =>
+        /^\d+\.\d+\.\d+$/.test(version)
+    ).length;
+
+    return {
+        value: pinnedDependencies / totalDependencies,
+        latency: (Date.now() - start) / 1000,
+    };
+}
+
+export async function codeReviewCoverage(
+    repoURL: string,
+    headers: Record<string, string>
+): Promise<{ value: number; latency: number }> {
+    const start = Date.now();
+    const pullsUrl = `${repoURL}/pulls?state=closed&per_page=100`;
+
+    try {
+        const pullRequestsResponse = await axios.get(pullsUrl, { headers });
+        const pullRequests = pullRequestsResponse.data;
+
+        if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
+            return { value: 1.0, latency: (Date.now() - start) / 1000 };
+        }
+
+        let reviewedLOC = 0;
+        let totalLOC = 0;
+
+        for (const pr of pullRequests) {
+            if (pr.merged_at && pr.requested_reviewers && pr.requested_reviewers.length > 0) {
+                const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
+                const prFilesResponse = await axios.get(prFilesUrl, { headers });
+                const prFiles = prFilesResponse.data;
+
+                const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
+                reviewedLOC += loc;
+            }
+            totalLOC += reviewedLOC;
+        }
+
+        return {
+            value: reviewedLOC / totalLOC || 0,
+            latency: (Date.now() - start) / 1000,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error('Error fetching pull requests or LOC:', error.message);
+        } else {
+            console.error(`Error fetching pull requests or LOC: ${String(error)}`);
+        }
+        return { value: 0, latency: (Date.now() - start) / 1000 };
+    }
+}

@@ -160,7 +160,6 @@ export const handler = async (
                 }),
             };
         }
-    
         const id = pathParameters.id;
         const authToken = headers["X-Authorization"] || headers["x-authorization"];
         // Handle specific routes
