@@ -690,16 +690,12 @@ export const handlePackagesList = async (
                 if (version) {
                     const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
                     results.push(...caratPackages);
-                } else {
-                    console.warn("Invalid Carat version format:", query.Version);
                 }
             } else if (query.Version.toLowerCase().includes("tilde".toLowerCase())) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1]?.replace(/^~+/, ""); 
                 if (version) {
                     const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
                     results.push(...tildePackages);
-                } else {
-                    console.warn("Invalid Tilde version format:", query.Version);
                 }
             }
         } else {
