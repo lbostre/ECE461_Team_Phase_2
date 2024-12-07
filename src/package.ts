@@ -745,7 +745,16 @@ export async function handlePackageByRegEx(
             };
         }
 
-        const parsedBody = typeof body === "string" ? JSON.parse(body) : body;
+        let parsedBody;
+        try {
+            parsedBody = typeof body === "string" ? JSON.parse(body) : body;
+        } catch (error) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+            };
+        }
 
         if (!parsedBody.RegEx || typeof parsedBody.RegEx !== "string") {
             return {
