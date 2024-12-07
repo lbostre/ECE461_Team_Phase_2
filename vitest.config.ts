@@ -9,9 +9,6 @@ export default defineConfig({
             'repos/**/*', // Use more explicit exclusion for repos directory
             'logs',
             'coverage',
-            // Files with not completed tests
-            '__tests__/endpoints/package_-id-.test.ts',
-            // Empty files
         ],
         coverage: {
             enabled: true,
