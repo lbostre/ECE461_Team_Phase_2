@@ -78,7 +78,6 @@ describe('/package POST endpoint', () => {
       Correctness: 1,
       RampUp: 1,
       ResponsiveMaintainer: 1,
-      LicenseScore: 1,
       NetScore: 1,
     });
     vi.mocked(createPackageService).mockResolvedValue({

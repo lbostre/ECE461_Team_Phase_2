@@ -5,7 +5,7 @@ import { APIGatewayProxyEvent } from 'aws-lambda';
 import { handler } from '../../index';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { extractAndValidateToken } from '../../src/util/authUtil';
+import { validateToken } from '../../src/util/authUtil';
 import { handlePackageByRegEx } from '../../src/package';
 import jwt from 'jsonwebtoken';
 
@@ -17,7 +17,7 @@ vi.mock('../../src/util/authUtil', async () => {
   const originalModule = await vi.importActual<typeof import('../../src/util/authUtil')>('../../src/util/authUtil');
   return {
     ...originalModule,
-    extractAndValidateToken: vi.fn(),
+    validateToken: vi.fn(),
   };
 });
 
@@ -43,7 +43,7 @@ const invalidHeaders = { 'X-Authorization': `bearer ${invalidAuthToken}` };
 
 describe('/package/byRegEx POST endpoint', () => {
   it('should return a list of packages matching the regex with a 200 status', async () => {
-    vi.mocked(extractAndValidateToken).mockResolvedValue({ isValid: true });
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
     vi.mocked(handlePackageByRegEx).mockResolvedValue({
       statusCode: 200,
       headers: {},
@@ -93,7 +93,7 @@ describe('/package/byRegEx POST endpoint', () => {
   });
 
   it('should return a 403 status for missing or invalid authentication token', async () => {
-    vi.mocked(extractAndValidateToken).mockResolvedValue({ isValid: false });
+    vi.mocked(validateToken).mockResolvedValue({ isValid: false });
 
     const event: APIGatewayProxyEvent = {
       httpMethod: 'POST',
@@ -118,7 +118,7 @@ describe('/package/byRegEx POST endpoint', () => {
   });
 
   it('should return a 404 status when no package is found under the regex', async () => {
-    vi.mocked(extractAndValidateToken).mockResolvedValue({ isValid: true });
+    vi.mocked(validateToken).mockResolvedValue({ isValid: true });
     vi.mocked(handlePackageByRegEx).mockResolvedValue({
       statusCode: 404,
       headers: {},
