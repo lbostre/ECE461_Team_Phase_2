@@ -755,7 +755,7 @@ export async function fetchReadmesBatch(
     return results;
 }
 
-function extractOwnerRepoFromUrl(url: string): [string, string] {
+export function extractOwnerRepoFromUrl(url: string): [string, string] {
     const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
     if (!match) {
         throw new Error(`Invalid GitHub URL: ${url}`);
@@ -763,7 +763,7 @@ function extractOwnerRepoFromUrl(url: string): [string, string] {
     return [match[1], match[2]];
 }
 
-function splitIntoChunks<T>(arr: T[], size: number): T[][] {
+export function splitIntoChunks<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
     for (let i = 0; i < arr.length; i += size) {
         chunks.push(arr.slice(i, i + size));
