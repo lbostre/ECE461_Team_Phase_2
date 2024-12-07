@@ -13,7 +13,6 @@ export default defineConfig({
             '__tests__/endpoints/package_-id-.test.ts',
             '__tests__/endpoints/package_byRegEx.test.ts', 
             // '__tests__/endpoints/package.test.ts',
-            // Files with failing tests
             // Empty files
         ],
         coverage: {
