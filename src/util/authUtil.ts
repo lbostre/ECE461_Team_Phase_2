@@ -224,27 +224,36 @@ export async function validateToken(
 
 // Function to delete user account
 export async function deleteUser(authToken: string, username: string, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
-    const token = authToken.replace("bearer ", "").trim();
-    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+    try {
+        const token = authToken.replace("bearer ", "").trim();
+        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
-    if (!decoded || (decoded.name !== username && !decoded.isAdmin)) {
+        if (!decoded || (decoded.name !== username && !decoded.isAdmin)) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Unauthorized action." }),
+            };
+        }
+
+        await dynamoDb.send(new DeleteCommand({
+            TableName: USER_TABLE_NAME,
+            Key: { username },
+        }));
+
+        return { 
+            statusCode: 200, 
+            headers: corsHeaders, 
+            body: JSON.stringify({ message: "User deleted successfully." })
+        };
+    } catch (error) {
+        console.error("Error deleting user:", error);
         return {
-            statusCode: 403,
+            statusCode: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: "Unauthorized action." }),
+            body: JSON.stringify({ error: "Internal Server Error" }),
         };
     }
-
-    await dynamoDb.send(new DeleteCommand({
-        TableName: USER_TABLE_NAME,
-        Key: { username },
-    }));
-
-    return { 
-        statusCode: 200, 
-        headers: corsHeaders, 
-        body: JSON.stringify({ message: "User deleted successfully." })
-    };
 }
 
 export async function handleGetUser(
