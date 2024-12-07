@@ -61,6 +61,35 @@ describe('handlePackageUpdate', () => {
   const validAuthToken = 'valid-auth-token';
   const headers = { 'X-Authorization': validAuthToken };
 
+  const validRepoData = {
+    BusFactor: 0.8,             // Bus factor score
+    BusFactor_Latency: 100,     // Latency time for bus factor calculation
+    Correctness: 0.9,           // Correctness score
+    Correctness_Latency: 150,   // Latency time for correctness calculation
+    RampUp: 0.7,                // Ramp-up time score
+    RampUp_Latency: 200,        // Latency time for ramp-up score calculation
+    ResponsiveMaintainer: 0.85, // Responsiveness score
+    ResponsiveMaintainer_Latency: 120, // Latency time for responsiveness calculation
+    License: 0.95,              // License compatibility score
+    License_Latency: 80,        // Latency time for license compatibility calculation
+    NetScore: 0.88,             // Overall score
+    NetScore_Latency: 250,      // Latency time for score calculation
+  };
+  const invalidRepoData = {
+    BusFactor: 0.8,             // Bus factor score
+    BusFactor_Latency: 100,     // Latency time for bus factor calculation
+    Correctness: 0.9,           // Correctness score
+    Correctness_Latency: 150,   // Latency time for correctness calculation
+    RampUp: 0.7,                // Ramp-up time score
+    RampUp_Latency: 200,        // Latency time for ramp-up score calculation
+    ResponsiveMaintainer: 0.85, // Responsiveness score
+    ResponsiveMaintainer_Latency: 120, // Latency time for responsiveness calculation
+    License: 0.95,              // License compatibility score
+    License_Latency: 80,        // Latency time for license compatibility calculation
+    NetScore: 0.45,             // Overall score
+    NetScore_Latency: 250,      // Latency time for score calculation
+  };
+
   const mockPackageData = {
     metadata: {
       ID: 'examplePackage123',
@@ -92,14 +121,7 @@ describe('handlePackageUpdate', () => {
     ddbMock.on(GetCommand).resolves(mockDynamoResponse);
     ddbMock.on(PutCommand).resolves({});
     vi.mocked(uploadToS3).mockResolvedValue('s3-url');
-    vi.mocked(getRepoData).mockResolvedValue({
-      BusFactor: 1,
-      Correctness: 1,
-      RampUp: 1,
-      ResponsiveMaintainer: 1,
-      LicenseScore: 1,
-      NetScore: 1,
-    });
+    vi.mocked(getRepoData).mockResolvedValue(validRepoData);
     vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
 
     const result = await handlePackageUpdate(
@@ -120,7 +142,7 @@ describe('handlePackageUpdate', () => {
   it('should return 400 if the request body is missing', async () => {
     const result = await handlePackageUpdate(
       'examplePackage123',
-      null,
+      '',
       ddbMock as unknown as DynamoDBDocumentClient,
       s3Mock as unknown as S3Client,
       validAuthToken
@@ -198,14 +220,7 @@ describe('handlePackageUpdate', () => {
     ddbMock.on(GetCommand).resolves(mockDynamoResponse);
     ddbMock.on(PutCommand).resolves({});
     vi.mocked(uploadToS3).mockResolvedValue('s3-url');
-    vi.mocked(getRepoData).mockResolvedValue({
-      BusFactor: 0.2,
-      Correctness: 0.2,
-      RampUp: 0.2,
-      ResponsiveMaintainer: 0.2,
-      LicenseScore: 0.2,
-      NetScore: 0.2,
-    });
+    vi.mocked(getRepoData).mockResolvedValue(invalidRepoData);
     vi.mocked(getUserInfo).mockResolvedValue({ username: 'test-user', isAdmin: false });
 
     const result = await handlePackageUpdate(

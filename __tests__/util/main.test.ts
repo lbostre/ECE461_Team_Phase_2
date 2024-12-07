@@ -8,9 +8,7 @@ import * as correctness from '../../src/metrics/correctness';
 import * as rampUpTime from '../../src/metrics/rampUpTime';
 import * as licensing from '../../src/metrics/licensing';
 import * as calculateScore from '../../src/metrics/calculateScore';
-
-// Test getRepoData function
-
+import * as codeReviewCoverage from '../../src/util/repoUtils';
 
 // Mock environment variables
 process.env.GITHUB_TOKEN = 'test-github-token';
@@ -23,6 +21,8 @@ vi.mock('../../src/util/repoUtils', () => ({
     findReadme: vi.fn(),
     findLicense: vi.fn(),
     cleanUpRepository: vi.fn(),
+    dependencyPinning: vi.fn(),
+    codeReviewCoverage: vi.fn(),
 }));
 
 vi.mock('../../src/util/fetchData', () => ({
@@ -73,15 +73,17 @@ describe('getRepoData', () => {
         vi.mocked(repoUtils.findLicense).mockResolvedValue('LICENSE content');
         vi.mocked(fetchData.fetchCommits).mockResolvedValue([['contributor1', 1], ['contributor2', 2]]);
         vi.mocked(fetchData.fetchIssues).mockResolvedValue({
-        openIssues: 10,
-        closedIssues: 20,
-        issueDurations: [1, 2, 3],
+            openIssues: 10,
+            closedIssues: 20,
+            issueDurations: [1, 2, 3],
         });
-        vi.mocked(busFactor.busFactor).mockResolvedValue({ busFactorValue: 0.8, busFactorEnd: Date.now() });
-        vi.mocked(correctness.correctness).mockResolvedValue({ correctnessValue: 0.9, correctnessEnd: Date.now() });
-        vi.mocked(responsiveness.responsiveness).mockResolvedValue({ responsivenessValue: 0.7, responsivenessEnd: Date.now() });
-        vi.mocked(rampUpTime.rampUpTime).mockResolvedValue({ rampUpTimeValue: 0.6, rampUpTimeEnd: Date.now() });
-        vi.mocked(licensing.licensing).mockResolvedValue({ licenseCompatabilityValue: 1.0, licenseEnd: Date.now() });
+        vi.mocked(busFactor.busFactor).mockResolvedValue({ busFactorValue: 0.8, busFactorLatency: 100 });
+        vi.mocked(correctness.correctness).mockResolvedValue({ correctnessValue: 0.9, correctnessLatency: 150 });
+        vi.mocked(responsiveness.responsiveness).mockResolvedValue({ responsivenessValue: 0.7, responsivenessLatency: 120 });
+        vi.mocked(rampUpTime.rampUpTime).mockResolvedValue({ rampUpTimeValue: 0.6, rampUpTimeLatency: 200 });
+        vi.mocked(licensing.licensing).mockResolvedValue({ licenseCompatabilityValue: 1.0, licenseLatency: 80 });
+        vi.mocked(repoUtils.dependencyPinning).mockResolvedValue({ value: 0.9, latency: 110 });
+        vi.mocked(repoUtils.codeReviewCoverage).mockResolvedValue({ value: 0.75, latency: 130 });
         vi.mocked(calculateScore.calculateScore).mockResolvedValue(0.8);
 
         const result = await getRepoData('https://www.npmjs.com/package/test');
@@ -97,15 +99,17 @@ describe('getRepoData', () => {
         vi.mocked(repoUtils.findLicense).mockResolvedValue('LICENSE content');
         vi.mocked(fetchData.fetchCommits).mockResolvedValue([['contributor1', 1], ['contributor2', 2]]);
         vi.mocked(fetchData.fetchIssues).mockResolvedValue({
-        openIssues: 10,
-        closedIssues: 20,
-        issueDurations: [1, 2, 3],
+            openIssues: 10,
+            closedIssues: 20,
+            issueDurations: [1, 2, 3],
         });
-        vi.mocked(busFactor.busFactor).mockResolvedValue({ busFactorValue: 0.8, busFactorEnd: Date.now() });
-        vi.mocked(correctness.correctness).mockResolvedValue({ correctnessValue: 0.9, correctnessEnd: Date.now() });
-        vi.mocked(responsiveness.responsiveness).mockResolvedValue({ responsivenessValue: 0.7, responsivenessEnd: Date.now() });
-        vi.mocked(rampUpTime.rampUpTime).mockResolvedValue({ rampUpTimeValue: 0.6, rampUpTimeEnd: Date.now() });
-        vi.mocked(licensing.licensing).mockResolvedValue({ licenseCompatabilityValue: 1.0, licenseEnd: Date.now() });
+        vi.mocked(busFactor.busFactor).mockResolvedValue({ busFactorValue: 0.8, busFactorLatency: 100 });
+        vi.mocked(correctness.correctness).mockResolvedValue({ correctnessValue: 0.9, correctnessLatency: 150 });
+        vi.mocked(responsiveness.responsiveness).mockResolvedValue({ responsivenessValue: 0.7, responsivenessLatency: 120 });
+        vi.mocked(rampUpTime.rampUpTime).mockResolvedValue({ rampUpTimeValue: 0.6, rampUpTimeLatency: 200 });
+        vi.mocked(licensing.licensing).mockResolvedValue({ licenseCompatabilityValue: 1.0, licenseLatency: 80 });
+        vi.mocked(repoUtils.dependencyPinning).mockResolvedValue({ value: 0.9, latency: 110 });
+        vi.mocked(repoUtils.codeReviewCoverage).mockResolvedValue({ value: 0.75, latency: 130 });
         vi.mocked(calculateScore.calculateScore).mockResolvedValue(0.8);
 
         const result = await getRepoData(repoURL);
@@ -121,6 +125,8 @@ describe('getRepoData', () => {
         expect(responsiveness.responsiveness).toHaveBeenCalledWith([1, 2, 3]);
         expect(rampUpTime.rampUpTime).toHaveBeenCalledWith('README content');
         expect(licensing.licensing).toHaveBeenCalledWith('LICENSE content');
+        expect(repoUtils.dependencyPinning).toHaveBeenCalledWith('/path/to/repo');
+        expect(repoUtils.codeReviewCoverage).toHaveBeenCalledWith('https://api.github.com/repos/test/repo', expect.any(Object));
         expect(calculateScore.calculateScore).toHaveBeenCalledWith(0.8, 0.7, 0.9, 0.6, 1.0);
     });
 
