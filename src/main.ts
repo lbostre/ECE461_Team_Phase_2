@@ -100,7 +100,9 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 responsivenessValue,
                 correctnessValue,
                 rampUpTimeValue,
-                licenseCompatabilityValue
+                licenseCompatabilityValue,
+                dependencyPinningValue,
+                codeReviewValue
             );
             const scoreEnd = Date.now();
             console.log('Score calculated:', netScore);
