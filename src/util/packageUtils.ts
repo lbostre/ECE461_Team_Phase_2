@@ -205,27 +205,24 @@ export async function getRepositoryVersion(url: string): Promise<string> {
 
 export async function extractPackageJsonUrl(contentBase64: string): Promise<string | null> {
     try {
-        // Step 1: Decode the base64 content
         const buffer = Buffer.from(contentBase64, 'base64');
-
-        // Step 2: Load the content into a zip extractor
         const zip = new AdmZip(buffer);
 
-        // Step 3: Log all file entries for debugging
-        const entries = zip.getEntries();
         console.log("Files in ZIP:");
-        entries.forEach((entry) => console.log(entry.entryName));
+        const entries = zip.getEntries();
+        entries.forEach((entry) => console.log(`Entry: ${entry.entryName}`));
 
-        // Step 4: Search for package.json file (recursively)
-        const packageJsonEntry = entries.find(
-            (entry) => entry.entryName.toLowerCase().endsWith('/package.json') || entry.entryName.toLowerCase() === 'package.json'
-        );
+        const packageJsonEntry = entries.find((entry) => {
+            const normalizedEntryName = entry.entryName.replace(/\\/g, '/').toLowerCase();
+            console.log(`Checking entry: ${normalizedEntryName}`);
+            return normalizedEntryName.endsWith('package.json');
+        });
+
         if (!packageJsonEntry) {
             console.error("package.json not found in content");
             return null;
         }
 
-        // Step 5: Parse package.json to get the repository URL
         const packageJsonContent = packageJsonEntry.getData().toString('utf8');
         const packageJson = JSON.parse(packageJsonContent);
 
