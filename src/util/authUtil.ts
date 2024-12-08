@@ -373,8 +373,8 @@ export async function handleReset(
         // Clear tables and handle errors
         const clear_results = await Promise.all([
             clearUserTable(dynamoDb),
-            clearTable("ECE461_Database", dynamoDb),
-            clearTable("ECE461_CostTable", dynamoDb),
+            clearTable("ECE461_Database", dynamoDb, "ECEfoursixone"),
+            clearTable("ECE461_CostTable", dynamoDb, "packageID"),
         ]);
         if (clear_results.some((result: any) => result instanceof Error)) {
             throw new Error("Error clearing tables.");
@@ -399,21 +399,34 @@ export async function handleReset(
 }
 
 // Helper function to clear a table
-export async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentClient): Promise<void> {
+export async function clearTable(
+    tableName: string,
+    dynamoDb: DynamoDBDocumentClient,
+    partitionKey: string
+): Promise<void> {
     try {
         let items;
         do {
+            // Scan the table for all items
             const scanCommand = new ScanCommand({ TableName: tableName });
             const response = await dynamoDb.send(scanCommand);
             items = response.Items;
 
             if (items && items.length > 0) {
                 for (const item of items) {
+                    // Dynamically use the provided partition key
+                    const partitionKeyValue = item[partitionKey];
+                    if (!partitionKeyValue) {
+                        console.warn(`Item in table ${tableName} is missing partition key ${partitionKey}:`, item);
+                        continue;
+                    }
+
                     const deleteCommand = new DeleteCommand({
                         TableName: tableName,
-                        Key: { username: item.username || item.ECEfoursixone }, // Adjust key based on table
+                        Key: { [partitionKey]: partitionKeyValue },
                     });
                     await dynamoDb.send(deleteCommand);
+                    console.log(`Deleted item with ${partitionKey}: ${partitionKeyValue}`);
                 }
             }
         } while (items && items.length > 0);
