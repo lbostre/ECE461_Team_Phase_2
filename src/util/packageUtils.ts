@@ -283,24 +283,38 @@ export function getRepositoryUrlFromPackageJson(packageJson: any): string | null
 }
 
 export async function extractVersionFromPackageJson(contentBase64: string): Promise<string> {
-    // Step 1: Decode the base64 content
-    const buffer = Buffer.from(contentBase64, 'base64');
+    try {
+        // Step 1: Decode the base64 content
+        const buffer = Buffer.from(contentBase64, 'base64');
 
-    // Step 2: Load the content into a zip extractor
-    const zip = new AdmZip(buffer);
+        // Step 2: Load the content into a zip extractor
+        const zip = new AdmZip(buffer);
 
-    // Step 3: Search for package.json file
-    const packageJsonEntry = zip.getEntry('package.json');
-    if (!packageJsonEntry) {
-        console.error("package.json not found in content");
-        return "1.0.0";
+        // Step 3: Search for package.json file (recursively)
+        console.log("Scanning ZIP file for package.json...");
+        const packageJsonEntry = zip.getEntries().find((entry) => {
+            const normalizedEntryName = entry.entryName.replace(/\\/g, '/').toLowerCase();
+            return normalizedEntryName.endsWith('package.json');
+        });
+
+        if (!packageJsonEntry) {
+            console.error("package.json not found in content");
+            return "1.0.0"; // Default version if package.json is missing
+        }
+
+        console.log(`Found package.json at: ${packageJsonEntry.entryName}`);
+
+        // Step 4: Parse package.json to get the package version
+        const packageJsonContent = packageJsonEntry.getData().toString('utf8');
+        const packageJson = JSON.parse(packageJsonContent);
+
+        const version = packageJson.version || "1.0.0"; // Default version if missing
+        console.log(`Extracted version: ${version}`);
+        return version;
+    } catch (error) {
+        console.error("Error extracting version from package.json:", error);
+        return "1.0.0"; // Return default version on failure
     }
-
-    // Step 4: Parse package.json to get the package version
-    const packageJsonContent = packageJsonEntry.getData().toString('utf8');
-    const packageJson = JSON.parse(packageJsonContent);
-
-    return packageJson.version || "1.0.0";
 }
 
 export async function fetchPackageById(
