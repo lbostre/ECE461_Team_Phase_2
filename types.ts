@@ -79,15 +79,6 @@ export interface PageInfo {
     endCursor: string | null;
 }
 
-export interface IssuesResponse {
-    repository: {
-        issues: {
-            edges: IssueEdge[];
-            pageInfo: PageInfo;
-        };
-    };
-}
-
 export interface CommitAuthor {
     user: {
         login: string;
@@ -132,4 +123,55 @@ export interface PullRequest {
   
 export interface PullRequestFile {
     changes: number;
+}
+
+export interface RepoInfo {
+    owner: string;
+    repo: string;
+}
+
+export interface CommitHistoryResponse {
+    data: {
+        repository: {
+            defaultBranchRef: {
+                target: {
+                    history: {
+                        pageInfo: {
+                            hasNextPage: boolean;
+                            endCursor: string | null;
+                        };
+                        edges: Array<{
+                            node: {
+                                author: {
+                                    user: {
+                                        login: string | null;
+                                    } | null;
+                                };
+                            };
+                        }>;
+                    };
+                };
+            };
+        };
+    };
+}
+
+export interface IssuesResponse {
+    data: {
+        repository: {
+            issues: {
+                pageInfo: {
+                    hasNextPage: boolean;
+                    endCursor: string | null;
+                };
+                edges: Array<{
+                    node: {
+                        state: string;
+                        createdAt: string;
+                        closedAt: string | null;
+                    };
+                }>;
+            };
+        };
+    };
 }
