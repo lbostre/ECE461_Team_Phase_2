@@ -760,16 +760,24 @@ export const handlePackagesList = async (
                 const params = {
                     TableName: "ECE461_Database",
                 };
-
+        
                 const command = new ScanCommand(params);
                 const response = await dynamoDb.send(command);
-
+        
                 const items = response.Items || [];
-                const matchingPackages = items.filter((item: any) => {
-                    const packageName = item.ECEfoursixone.replace(/\d+$/, ""); 
-                    return packageName === query.Name.toLowerCase();
-                });
-
+                
+                // Filter items matching the provided name and map to expected structure
+                const matchingPackages = items
+                    .filter((item: any) => {
+                        const packageName = item.ECEfoursixone.replace(/\d+$/, ""); // Extract name from packageID
+                        return packageName === query.Name.toLowerCase();
+                    })
+                    .map((item: any) => ({
+                        Version: item.Version,
+                        Name: query.Name,
+                        ID: item.ECEfoursixone,
+                    }));
+        
                 results.push(...matchingPackages);
             } catch (error) {
                 console.error("Error scanning table for package name:", error);
