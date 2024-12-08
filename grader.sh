@@ -68,13 +68,85 @@ download_logs() {
   fi
 }
 
+fix_time_est() {
+    input_datetime="$1"
+
+    # Extract components from the input
+    date_part="${input_datetime:0:10}" # First 10 characters (YYYY-MM-DD)
+    time_part="${input_datetime:11:12}" # Time part (HH:MM:SS.mmmmmm)
+
+    # Extract year, month, day, hour, minute, second, and microsecond
+    year="${date_part:0:4}"
+    month="${date_part:5:2}"
+    day="${date_part:8:2}"
+
+    hour="${time_part:0:2}"
+    minute="${time_part:3:2}"
+    second_micro="${time_part:6}" # Includes seconds and microseconds
+
+    # Convert hour to integer and subtract 5 for EST
+    hour=$((10#$hour - 5))
+
+    # Handle hour underflow and adjust the date
+    if [ "$hour" -lt 0 ]; then
+        hour=$((hour + 24))
+        day=$((10#$day - 1))
+
+        # Handle day underflow and adjust the month
+        if [ "$day" -lt 1 ]; then
+            month=$((10#$month - 1))
+            if [ "$month" -lt 1 ]; then
+                month=12
+                year=$((year - 1))
+            fi
+
+            # Days in each month (non-leap year, handle leap years below)
+            case $month in
+                1|3|5|7|8|10|12) day=31 ;;
+                4|6|9|11) day=30 ;;
+                2)
+                    # Check for leap year
+                    if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                        day=29
+                    else
+                        day=28
+                    fi
+                    ;;
+            esac
+        fi
+    fi
+
+    # Format adjusted hour to two digits
+    hour=$(printf "%02d" "$hour")
+
+    # Convert hour to 12-hour format and determine AM/PM
+    if [ "$hour" -ge 12 ]; then
+        am_pm="PM"
+        if [ "$hour" -gt 12 ]; then
+            hour=$((hour - 12))
+        fi
+    else
+        am_pm="AM"
+        if [ "$hour" -eq 0 ]; then
+            hour=12
+        fi
+    fi
+
+    # Ensure hour is two digits
+    hour=$(printf "%02d" "$hour")
+
+    # Combine the formatted components
+    formatted_date=$(printf "%04d-%02d-%02d" "$year" "$month" "$day")
+    formatted_datetime="${formatted_date} ${hour}:${minute}:${second_micro} ${am_pm}"
+    echo "$formatted_datetime"
+}
 
 print_run_details() {
   local OUTPUT_JSON="$1"
 
   # Print the top-level details in green
-  START_TIME=$(echo "$OUTPUT_JSON" | jq -r '.["Start Time"]')
-  END_TIME=$(echo "$OUTPUT_JSON" | jq -r '.["End Time"]')
+  START_TIME=$(fix_time_est "$(echo "$OUTPUT_JSON" | jq -r '.["Start Time"]')")
+  END_TIME=$(fix_time_est "$(echo "$OUTPUT_JSON" | jq -r '.["End Time"]')")
   RUN_TIME=$(echo "$OUTPUT_JSON" | jq -r '.["Run Time"]')
   TOTAL_TESTS=$(echo "$OUTPUT_JSON" | jq -r '.["Total Tests"]')
 
