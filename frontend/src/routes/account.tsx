@@ -1,10 +1,11 @@
 import CreateUser from "@/components/CreateUser";
 import DeleteUserButton from "@/components/DeleteUserButton";
+import ResetRegistryButton from "@/components/ResetRegistryButton";
 import { getAuthToken } from "@/utils/auth";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-type User = {
+export type User = {
     name: string;
     password: string;
     isAdmin: boolean;
@@ -15,10 +16,11 @@ type User = {
 export default function Account() {
     const [userInfo, setUserInfo] = useState<User>();
     const token = getAuthToken();
+    const apiUrl = import.meta.env.VITE_API_URL;
+
     useEffect(() => {
         const authenticate = async () => {
             try {
-                const apiUrl = import.meta.env.VITE_API_URL;
                 const response = await axios.get(`${apiUrl}/users`, {
                     headers: {
                         "x-Authorization": token,
@@ -69,6 +71,17 @@ export default function Account() {
                 {userInfo?.isAdmin && (
                     <div className="flex flex-col border p-4 rounded-lg">
                         <CreateUser />
+                    </div>
+                )}
+                {userInfo?.isAdmin && (
+                    <div className="flex flex-col border p-4 rounded-lg">
+                        <h1 className="text-2xl font-bold mb-1">
+                            Reset registry
+                        </h1>
+                        <div className="flex flex-col gap-2">
+                            <p>Reset the registry to a system default state.</p>
+                            <ResetRegistryButton />
+                        </div>
                     </div>
                 )}
                 {userInfo && <DeleteUserButton username={userInfo?.name} />}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,10 +14,12 @@ import { getAuthToken } from "@/utils/auth";
 import axios from "axios";
 
 type versionOptions = "exact" | "boundedRange" | "carat" | "tilde";
-
+type UserPerms = Array<"upload" | "search" | "download">;
 export default function Root() {
     const navigate = useNavigate();
-
+    const token = getAuthToken();
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const [userPerms, setUserPerms] = useState<UserPerms>([]);
     const [packageName, setPackageName] = useState("");
     const [versionNumber, setVersionNumber] = useState("");
     const [versionNumberTwo, setVersionNumberTwo] = useState("");
@@ -71,7 +73,7 @@ export default function Root() {
 
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/packages`,
+                `${apiUrl}/packages`,
                 requestBody,
                 {
                     headers: {
@@ -87,11 +89,9 @@ export default function Root() {
     };
 
     const handleSubmitRegex = async () => {
-        const token = getAuthToken();
-
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/package/byRegEx`,
+                `${apiUrl}/package/byRegEx`,
                 {
                     RegEx: regex,
                 },
@@ -113,115 +113,150 @@ export default function Root() {
         }
     };
 
+    useEffect(() => {
+        const authenticate = async () => {
+            try {
+                const response = await axios.get(`${apiUrl}/users`, {
+                    headers: {
+                        "x-Authorization": token,
+                    },
+                });
+                console.log(
+                    "Authenticated user permissions:",
+                    response.data.User.permissions
+                );
+                setUserPerms(response.data.User.permissions);
+            } catch (error) {
+                console.error("Authentication failed:", error);
+            }
+        };
+
+        authenticate();
+    }, [token]);
+
     return (
         <div className="flex flex-col items-center justify-center w-screen h-screen">
             <div className="flex flex-col gap-4 items-center w-[600px] h-fit">
                 <h1 className="font-bold text-2xl">Package Manager</h1>
-                <div className="w-full flex flex-col gap-2">
-                    <h1 className="font-bold text-xl">
-                        Search with Name and Version
-                    </h1>
-                    <Input
-                        className="text-black w-full"
-                        placeholder="Search packages..."
-                        value={packageName}
-                        onChange={(e) => setPackageName(e.target.value)}
-                    />
-                    <div className="flex flex-row items-center justify-between">
-                        <div className="flex flex-row items-center gap-2">
-                            <Select
-                                value={selectedOption}
-                                onValueChange={handleChange}
-                            >
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Select an option" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectItem value="exact">
-                                            Exact
-                                        </SelectItem>
-                                        <SelectItem value="boundedRange">
-                                            Bounded range
-                                        </SelectItem>
-                                        <SelectItem value="carat">
-                                            Carat
-                                        </SelectItem>
-                                        <SelectItem value="tilde">
-                                            Tilde
-                                        </SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
+                {userPerms.includes("search") && (
+                    <div className="flex flex-col gap-4 items-center w-full">
+                        <div className="w-full flex flex-col gap-2">
+                            <h1 className="font-bold text-xl">
+                                Search with Name and Version
+                            </h1>
                             <Input
-                                className="text-black w-40"
-                                placeholder="Version number"
-                                value={versionNumber}
-                                onChange={(e) =>
-                                    handleVersionChange(e.target.value)
-                                }
-                                onBlur={handleBlur} // Validate on blur
+                                className="text-black w-full"
+                                placeholder="Search packages..."
+                                value={packageName}
+                                onChange={(e) => setPackageName(e.target.value)}
                             />
-                            {selectedOption === "boundedRange" && (
-                                <Input
-                                    className="text-black w-40"
-                                    placeholder="Version number"
-                                    value={versionNumberTwo}
-                                    onChange={(e) =>
-                                        handleVersionChangeTwo(e.target.value)
+                            <div className="flex flex-row items-center justify-between">
+                                <div className="flex flex-row items-center gap-2">
+                                    <Select
+                                        value={selectedOption}
+                                        onValueChange={handleChange}
+                                    >
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="Select an option" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectItem value="exact">
+                                                    Exact
+                                                </SelectItem>
+                                                <SelectItem value="boundedRange">
+                                                    Bounded range
+                                                </SelectItem>
+                                                <SelectItem value="carat">
+                                                    Carat
+                                                </SelectItem>
+                                                <SelectItem value="tilde">
+                                                    Tilde
+                                                </SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                    <Input
+                                        className="text-black w-40"
+                                        placeholder="Version number"
+                                        value={versionNumber}
+                                        onChange={(e) =>
+                                            handleVersionChange(e.target.value)
+                                        }
+                                        onBlur={handleBlur} // Validate on blur
+                                    />
+                                    {selectedOption === "boundedRange" && (
+                                        <Input
+                                            className="text-black w-40"
+                                            placeholder="Version number"
+                                            value={versionNumberTwo}
+                                            onChange={(e) =>
+                                                handleVersionChangeTwo(
+                                                    e.target.value
+                                                )
+                                            }
+                                            onBlur={handleBlur} // Validate on blur
+                                        />
+                                    )}
+                                </div>
+                                <Button
+                                    className="w-fit"
+                                    disabled={
+                                        versionError ||
+                                        !versionNumber ||
+                                        !packageName
                                     }
-                                    onBlur={handleBlur} // Validate on blur
-                                />
+                                    onClick={() => handleSubmit()}
+                                >
+                                    Search
+                                </Button>
+                            </div>
+                            {versionError && (
+                                <p className="text-red-500 text-sm">
+                                    Version number must be in #.#.# format.
+                                </p>
                             )}
                         </div>
-                        <Button
-                            className="w-fit"
-                            disabled={
-                                versionError || !versionNumber || !packageName
-                            }
-                            onClick={() => handleSubmit()}
-                        >
-                            Search
-                        </Button>
+                        <div className="w-full flex flex-col gap-2">
+                            <h1 className="font-bold text-xl">
+                                Search with Regex
+                            </h1>
+                            <div className="flex flex-row gap-2">
+                                <Input
+                                    className="text-black w-full"
+                                    placeholder="Search packages..."
+                                    value={regex}
+                                    onChange={(e) => setRegex(e.target.value)}
+                                />
+                                <Button
+                                    className="w-fit"
+                                    disabled={!regex}
+                                    onClick={() => handleSubmitRegex()}
+                                >
+                                    Search
+                                </Button>
+                            </div>
+                            {regexError && (
+                                <p className="text-red-500 text-sm">
+                                    Error: {regexError}
+                                </p>
+                            )}
+                            {versionError && (
+                                <p className="text-red-500 text-sm">
+                                    Version number must be in #.#.# format.
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    {versionError && (
-                        <p className="text-red-500 text-sm">
-                            Version number must be in #.#.# format.
-                        </p>
-                    )}
-                </div>
-                <div className="w-full flex flex-col gap-2">
-                    <h1 className="font-bold text-xl">Search with Regex</h1>
-                    <div className="flex flex-row gap-2">
-                        <Input
-                            className="text-black w-full"
-                            placeholder="Search packages..."
-                            value={regex}
-                            onChange={(e) => setRegex(e.target.value)}
-                        />
-                        <Button
-                            className="w-fit"
-                            disabled={!regex}
-                            onClick={() => handleSubmitRegex()}
-                        >
-                            Search
-                        </Button>
-                    </div>
-                    {regexError && (
-                        <p className="text-red-500 text-sm">
-                            Error: {regexError}
-                        </p>
-                    )}
-                    {versionError && (
-                        <p className="text-red-500 text-sm">
-                            Version number must be in #.#.# format.
-                        </p>
-                    )}
-                </div>
-                <p>or</p>
-                <Link to="/upload">
-                    <Button className="w-fit">Upload</Button>
-                </Link>
+                )}
+                {userPerms.includes("upload") && (
+                    <>
+                        <p>or</p>
+                        <Link to="/upload">
+                            <Button className="w-fit">Upload</Button>
+                        </Link>
+                    </>
+                )}
             </div>
         </div>
     );
