@@ -143,8 +143,8 @@ export async function handlePackagePost(
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
-                    name = `${githubURL.split("/").pop()}`;
-                    const fileName = `${githubURL.split("/").pop()}${version.replace(/\./g, "")}.zip`;
+                    name = `${data.Name}`;
+                    const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
                     const existingPackage = await dynamoDb.send(new GetCommand({
                         TableName: TABLE_NAME,
                         Key: { ECEfoursixone: fileName.replace('.zip', '') }
@@ -770,7 +770,7 @@ export const handlePackagesList = async (
                 const matchingPackages = items
                     .filter((item: any) => {
                         const packageName = item.ECEfoursixone.replace(/\d.*/, ""); // Extract name from packageID
-                        return packageName === query.Name.toLowerCase();
+                        return packageName.contains(query.Name.toLowerCase());
                     })
                     .map((item: any) => ({
                         Version: item.Version,
