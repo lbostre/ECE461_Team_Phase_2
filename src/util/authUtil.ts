@@ -278,6 +278,19 @@ export async function deleteUser(
     dynamoDb: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
+        // Check if username is provided and valid
+        if (
+            !username ||
+            typeof username !== "string" ||
+            username.trim() === ""
+        ) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Invalid or missing username." }),
+            };
+        }
+
         const token = authToken.replace("bearer ", "").trim();
         const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
@@ -289,14 +302,28 @@ export async function deleteUser(
             };
         }
 
-        const response = await dynamoDb.send(
-            new DeleteCommand({
+        // Check if the user exists
+        const getUserResponse = await dynamoDb.send(
+            new GetCommand({
                 TableName: USER_TABLE_NAME,
                 Key: { username },
             })
         );
 
-        console.log(response);
+        if (!getUserResponse.Item) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "User not found." }),
+            };
+        }
+
+        const deleteResponse = await dynamoDb.send(
+            new DeleteCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username },
+            })
+        );
 
         return {
             statusCode: 200,
