@@ -373,8 +373,8 @@ export async function handleReset(
         // Clear tables and handle errors
         const clear_results = await Promise.all([
             clearUserTable(dynamoDb),
-            clearTable("ECE461_PackagesTable", dynamoDb),
-            clearTable("ECE461_CostsTable", dynamoDb),
+            clearTable("ECE461_Database", dynamoDb),
+            clearTable("ECE461_CostTable", dynamoDb),
         ]);
         if (clear_results.some((result: any) => result instanceof Error)) {
             throw new Error("Error clearing tables.");
