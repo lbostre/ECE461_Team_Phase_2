@@ -44,7 +44,7 @@ export const uploadToS3 = async (
     const command = new PutObjectCommand(params);
     await s3Client.send(command);
     console.log(`ZIP file uploaded successfully.`);
-    return `https://${bucketName}.s3.amazonaws.com/packages/${fileName.toLowerCase()}`;
+    return typeof content === "string" ? Buffer.from(content, "utf-8").toString() : content.toString();
 };
 
 // Function to download a file from S3 and save it to local storage

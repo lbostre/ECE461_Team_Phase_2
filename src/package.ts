@@ -220,7 +220,7 @@ export async function handlePackagePost(
             name,
             {
                 ...dataWithoutDebloat,
-                ...(data.URL ? { URL: data.URL, content: zipBase64 } : {}),
+                ...(data.URL ? { Content: zipBase64, URL: data.URL, JSProgram: data.JSProgram} : {}),
             },
             version
         );
