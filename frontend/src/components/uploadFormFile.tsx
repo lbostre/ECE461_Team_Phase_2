@@ -62,24 +62,27 @@ export function UploadFormFile() {
         },
     });
 
+    const validateZipFile = (file: File | null): boolean => {
+        return file !== null && file.name.endsWith(".zip");
+    };
+
     const handleFileChange = async (
         file: File | null
     ): Promise<string | null> => {
-        if (!file) return null;
-
+        if (!validateZipFile(file)) {
+            setUploadError("File must be a .zip file.");
+            return null;
+        }
+        // Proceed with Base64 conversion
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-
-            reader.onloadend = () => {
-                const result = reader.result as string; // The Base64 string
-                resolve(result);
-            };
-
-            reader.onerror = (error) => {
-                reject(error);
-            };
-
-            reader.readAsDataURL(file);
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            if (file) {
+                reader.readAsDataURL(file);
+            } else {
+                reject(new Error("File is null"));
+            }
         });
     };
 

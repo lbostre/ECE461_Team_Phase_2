@@ -22,7 +22,7 @@ type PackageMetadata = {
 };
 
 type PackageData = {
-    URL: string;
+    URL?: string;
     JSProgram: string;
     Content: string;
 };
@@ -336,7 +336,12 @@ export default function Package() {
                 </div>
                 <div className="flex flex-row gap-2">
                     <DeletePackageButton packageID={name || ""} />
-                    <UpdatePackageButton packageID={name || ""} />
+                    {packageData && (
+                        <UpdatePackageButton
+                            packageID={name || ""}
+                            packageData={packageData}
+                        />
+                    )}
                 </div>
             </div>
         </div>

@@ -22,6 +22,7 @@ export default function Root() {
     const [versionNumber, setVersionNumber] = useState("");
     const [versionNumberTwo, setVersionNumberTwo] = useState("");
     const [regex, setRegex] = useState("");
+    const [regexError, setRegexError] = useState("");
     const [versionError, setVersionError] = useState(false);
     const [selectedOption, setSelectedOption] =
         useState<versionOptions>("exact");
@@ -103,6 +104,11 @@ export default function Root() {
             );
             navigate("/packages", { state: { data: response.data } });
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response) {
+                setRegexError(error.response.data.error);
+            } else {
+                setRegexError("An unknown error occurred.");
+            }
             console.error("Error submitting the request:", error);
         }
     };
@@ -201,6 +207,11 @@ export default function Root() {
                             Search
                         </Button>
                     </div>
+                    {regexError && (
+                        <p className="text-red-500 text-sm">
+                            Error: {regexError}
+                        </p>
+                    )}
                     {versionError && (
                         <p className="text-red-500 text-sm">
                             Version number must be in #.#.# format.

@@ -58,7 +58,7 @@ export default function Login() {
             );
 
             // Assuming the token is in the response data
-            const token = response.data.token;
+            const token = response.data;
             console.log(JSON.stringify(requestBody), token);
             if (token) {
                 // Store the token securely (use secure storage in production if possible)
