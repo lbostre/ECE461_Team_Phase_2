@@ -22,6 +22,7 @@ import { MdError } from "react-icons/md";
 import { getAuthToken } from "@/utils/auth";
 import axios from "axios";
 import { FaCheckCircle } from "react-icons/fa";
+import { AiOutlineLoading } from "react-icons/ai";
 
 type PackageFileRequest = {
     Content: string;
@@ -285,7 +286,17 @@ export function UploadFormFile() {
                     />
 
                     <Button type="submit" disabled={isLoading}>
-                        {isLoading ? "Submitting..." : "Submit"}
+                        {isLoading ? (
+                            <div className="flex flex-row items-center gap-1">
+                                <p>Submitting...</p>
+                                <AiOutlineLoading
+                                    className="animate-spin"
+                                    size={18}
+                                />
+                            </div>
+                        ) : (
+                            "Submit"
+                        )}
                     </Button>
                 </form>
             </Form>

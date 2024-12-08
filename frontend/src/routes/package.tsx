@@ -1,5 +1,5 @@
 import CostTable from "@/components/CostTable";
-import DeletePackageButton from "@/components/DeletePackageButton";
+// import DeletePackageButton from "@/components/DeletePackageButton";
 import MetricsTable from "@/components/MetricsTable";
 import { Button } from "@/components/ui/button";
 import { AiOutlineLoading } from "react-icons/ai";
@@ -122,7 +122,6 @@ export default function Package() {
                     },
                 }
             );
-            console.log(costResponse.data);
             setCostData(costResponse.data);
             setIsLoading(false);
         };
