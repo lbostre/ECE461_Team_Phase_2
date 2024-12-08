@@ -386,10 +386,19 @@ export async function fetchPackageById(
             buffer.toString("base64")
         );
 
+        let nameFromId = id.replace(/\d.*/, ""); 
+
+        if (URL) {
+            const urlName = URL.split("/").pop()?.replace(".git", ""); 
+            if (urlName && urlName.toLowerCase() === nameFromId.toLowerCase()) {
+                nameFromId = urlName; 
+            }
+        }
+
         // Construct the package response
         const packageData: Package = {
             metadata: {
-                Name: id.replace(/\d.*/, ""), // Extract Name if ID includes Version
+                Name: nameFromId, // Extract Name if ID includes Version
                 Version: Version || "1.0.0",
                 ID: id,
             },
