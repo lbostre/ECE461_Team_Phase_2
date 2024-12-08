@@ -379,6 +379,7 @@ export async function handleReset(
             clearUserTable(dynamoDb),
             clearTable("ECE461_Database", dynamoDb, "ECEfoursixone"),
             clearTable("ECE461_CostTable", dynamoDb, "packageID"),
+            clearTable("ECE461_HistoryTable", dynamoDb, "PackageName"),
         ]);
 
         if (clearResults.some((result: any) => result instanceof Error)) {

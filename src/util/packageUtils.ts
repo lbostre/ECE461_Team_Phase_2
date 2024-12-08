@@ -36,16 +36,16 @@ export const uploadToS3 = async (
 ): Promise<string> => {
     const params = {
         Bucket: bucketName,
-        Key: `packages/${fileName}`, // file path in S3
+        Key: `packages/${fileName.toLowerCase()}`, // file path in S3
         Body: content,
         ContentType: "application/octet-stream", // Adjust content type based on your needs
     };
 
-    console.log(`Uploading file to S3: ${fileName}`);
+    console.log(`Uploading file to S3: ${fileName.toLowerCase()}`);
     const command = new PutObjectCommand(params);
     const data = await s3Client.send(command);
     console.log(`File uploaded successfully.`);
-    return `https://${bucketName}.s3.amazonaws.com/packages/${fileName}`;
+    return `https://${bucketName}.s3.amazonaws.com/packages/${fileName.toLowerCase()}`;
 };
 
 // Function to download a file from S3 and save it to local storage
@@ -57,11 +57,11 @@ export const downloadAndSaveFromS3 = async (
 ): Promise<void> => {
     const params = {
         Bucket: bucketName,
-        Key: `packages/${fileName}`, // Adjust the key if your file is in a different path
+        Key: `packages/${fileName.toLowerCase()}`, // Adjust the key if your file is in a different path
     };
 
     try {
-        console.log(`Downloading file from S3: ${fileName}`);
+        console.log(`Downloading file from S3: ${fileName.toLowerCase()}`);
         const command = new GetObjectCommand(params);
         const data = await s3Client.send(command);
 
@@ -142,7 +142,7 @@ export async function uploadGithubRepoAsZipToS3(
         // Upload the base64 string to S3
         const params = {
             Bucket: bucketName,
-            Key: `packages/${fileName}`, // file path in S3
+            Key: `packages/${fileName.toLowerCase()}`, // file path in S3
             Body: zipBase64,
             ContentType: "application/octet-stream", // Adjust content type based on your needs
         };
@@ -360,35 +360,12 @@ export async function fetchPackageById(
             return null;
         }
 
-        const { Version, URL, JSProgram, DownloadInfo } = dynamoResult.Item;
+        const { Version, URL, JSProgram } = dynamoResult.Item;
         console.log(`Retrieved metadata from DynamoDB:`, {
             Version,
             URL,
             JSProgram,
-            DownloadInfo,
         });
-
-        // Update the `DownloadInfo` attribute in DynamoDB
-        const downloadEvent = {
-            user: username,
-            timestamp: new Date().toISOString(),
-        };
-        const updatedDownloadInfo = Array.isArray(DownloadInfo)
-            ? [...DownloadInfo, downloadEvent]
-            : [downloadEvent];
-
-        await dynamoDb.send(
-            new UpdateCommand({
-                TableName: TABLE_NAME,
-                Key: { ECEfoursixone: id },
-                UpdateExpression: "SET DownloadInfo = :downloadInfo",
-                ExpressionAttributeValues: {
-                    ":downloadInfo": updatedDownloadInfo,
-                },
-            })
-        );
-
-        console.log(`Updated DownloadInfo for package ID ${id}:`, updatedDownloadInfo);
 
         // Fetch package content from S3
         const params = {
@@ -851,5 +828,51 @@ export async function clearS3Folder(
     } catch (error) {
         console.error(`Error clearing S3 folder ${folderPrefix}:`, error);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+export async function updateHistory(
+    dynamoDb: DynamoDBDocumentClient,
+    authToken: string,
+    packageMetadata: { Name: string; Version: string; ID: string },
+    action: string
+): Promise<void> {
+    try {
+        // Fetch user information
+        const userData = await getUserInfo(authToken, dynamoDb);
+        if (!userData) {
+            console.error("User data could not be retrieved from token.");
+            throw new Error("Unauthorized access - invalid user token.");
+        }
+
+        // Construct the item to be inserted
+        const currentTime = new Date().toISOString();
+        const historyItem = {
+            PackageName: packageMetadata.Name, // Partition Key
+            Timestamp: currentTime, // Sort Key
+            User: {
+                username: userData.username,
+                isAdmin: userData.isAdmin,
+            },
+            Action: action.toUpperCase(),
+            PackageMetadata: {
+                Name: packageMetadata.Name,
+                Version: packageMetadata.Version,
+                ID: packageMetadata.ID,
+            },
+        };
+
+        // Save history to DynamoDB
+        const command = new PutCommand({
+            TableName: "ECE461_HistoryTable",
+            Item: historyItem,
+        });
+
+        console.log("Adding history entry:", historyItem);
+        await dynamoDb.send(command);
+        console.log("History entry added successfully.");
+    } catch (error) {
+        console.error("Error updating history:", error);
+        throw new Error("Failed to update history.");
     }
 }

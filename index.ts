@@ -11,6 +11,7 @@ import {
     handlePackagesList,
     handlePackageByRegEx,
     handlePackageHistory,
+    handlePackageDelete,
 } from "./src/package.js";
 import {
     validateToken,
@@ -113,6 +114,68 @@ export const handler = async (
         return handlePackageByRegEx(body, dynamoDb);
     }
 
+    if (httpMethod === "GET" && path.includes('/package/byName/')) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        if (!pathParameters || !pathParameters.name) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageID or it is formed improperly, or is invalid.",
+                }),
+            };
+        }
+        const name = pathParameters.name;
+        if (path === `/package/byName/${name}`) {
+            return handlePackageHistory(name, dynamoDb);
+        }
+    }
+
+    if (httpMethod === "DELETE" && path.includes('/package/')) {
+        const validation = await extractAndValidateToken(event);
+        if (!validation.isValid) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        if (!pathParameters || !pathParameters.id) {
+            return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "There is missing field(s) in the PackageID or it is formed improperly, or is invalid.",
+                }),
+            };
+        }
+        const authToken = headers["X-Authorization"] || headers["x-authorization"];
+        if (!authToken) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
+            };
+        }
+        const id = pathParameters.id;
+        if (path === `/package/${id}`) {
+            return handlePackageDelete(id, dynamoDb, s3Client, authToken);
+        }
+    }
+
     if (httpMethod === "GET") {
         // /tracks
         if (path === "/tracks") {
@@ -163,15 +226,13 @@ export const handler = async (
         const id = pathParameters.id;
         const authToken = headers["X-Authorization"] || headers["x-authorization"];
         // Handle specific routes
-        if (path === `/package/${id}/rate`) {
-            return handlePackageRate(id, dynamoDb);
+        if (path === `/package/${id}/rate` && authToken) {
+            return handlePackageRate(id, dynamoDb, authToken);
         } else if (path === `/package/${id}` && authToken) {
             return handlePackageGet(id, dynamoClient, s3Client, BUCKET_NAME, authToken);
         } else if (path === `/package/${id}/cost`) {
             return handlePackageCost(id, event.queryStringParameters?.dependency === "true", dynamoDb);
-        } else if (path === `/package/${id}/history`) {
-            return handlePackageHistory(id, dynamoDb);
-        }
+        } 
     }
 
     if (httpMethod === "POST" && pathParameters && pathParameters.id) {

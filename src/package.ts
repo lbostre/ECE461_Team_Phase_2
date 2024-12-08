@@ -16,12 +16,13 @@ import {
     getExactPackage,
     getAllPackages,
     fetchReadmesBatch,
+    updateHistory,
 } from "./util/packageUtils.js";
 import { getGroups, getUserInfo } from "./util/authUtil.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import { PutCommand, GetCommand, DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutCommand, GetCommand, DynamoDBDocumentClient, ScanCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import semver from "semver";
 
 const TABLE_NAME = "ECE461_Database";
@@ -201,9 +202,6 @@ export async function handlePackagePost(
             }
         }
 
-        const userData = await getUserInfo(authToken, dynamoDb);
-        const currentTime = new Date().toISOString();
-
         if (metricsResult && metricsResult.NetScore >= 0.5) {
             if (zipBase64 || s3Url) {
                 try {
@@ -215,10 +213,7 @@ export async function handlePackagePost(
                             URL: url,
                             JSProgram: data.JSProgram,
                             Metrics: metricsResult,
-                            UploadedBy: userData.username,
-                            UploadedAt: currentTime,
                             Group: group,
-                            DownloadInfo: [],
                         },
                     };
                     await dynamoDb.send(new PutCommand(dynamoParams));
@@ -235,6 +230,26 @@ export async function handlePackagePost(
                     };
                 }
             }
+        }
+
+        try {
+            console.log(`Updating history for deleted package: ${result.metadata.ID}`);
+            await updateHistory(
+                dynamoDb,
+                authToken,
+                { Name: name.replace(/\d+$/, ""), Version: version, ID: result.metadata.ID },
+                "CREATE"
+            );
+            console.log("History updated successfully.");
+        } catch (historyError) {
+            console.error("Error updating history:", historyError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to update history for the deleted package.",
+                }),
+            };
         }
 
         return {
@@ -291,6 +306,28 @@ export async function handlePackageGet(
             };
         }
 
+        try {
+            console.log(`Updating history for deleted package: ${id}`);
+            if (packageData && packageData.metadata && packageData.data) {
+                await updateHistory(
+                    dynamoDb,
+                    authToken,
+                    { Name: packageData.metadata.Name, Version: packageData.metadata.Version, ID: id },
+                    "DOWNLOAD"
+                );
+                console.log("History updated successfully.");
+            }
+        } catch (historyError) {
+            console.error("Error updating history:", historyError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to update history for the deleted package.",
+                }),
+            };
+        }
+
         console.log(`Successfully retrieved package data for ID: ${id}`);
         return {
             statusCode: 200,
@@ -309,18 +346,15 @@ export async function handlePackageGet(
 
 export async function handlePackageRate(
     id: string,
-    dynamoDbClient: DynamoDBDocumentClient
+    dynamoDbClient: DynamoDBDocumentClient,
+    authToken: string
 ): Promise<APIGatewayProxyResult> {
     try {
         console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
 
         const dynamoResult = await dynamoDbClient.send(new GetCommand({
             TableName: TABLE_NAME,
-            Key: { ECEfoursixone: id },
-            ProjectionExpression: "#metrics",
-            ExpressionAttributeNames: {
-                "#metrics": "Metrics",
-            },
+            Key: { ECEfoursixone: id }
         }));
 
         if (!dynamoResult.Item) {
@@ -357,6 +391,28 @@ export async function handlePackageRate(
         };
 
         console.log("Ordered metrics:", orderedMetrics);
+
+        try {
+            console.log(`Updating history for deleted package: ${id}`);
+            if (dynamoResult && dynamoResult.Item.Version) {
+                await updateHistory(
+                    dynamoDbClient,
+                    authToken,
+                    { Name: id.replace(/\d+$/, ""), Version: dynamoResult.Item.Version, ID: id },
+                    "RATE"
+                );
+                console.log("History updated successfully.");
+            }
+        } catch (historyError) {
+            console.error("Error updating history:", historyError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to update history for the deleted package.",
+                }),
+            };
+        }
 
         return {
             statusCode: 200,
@@ -599,9 +655,6 @@ export async function handlePackageUpdate(
             }
         }
 
-        const userData = await getUserInfo(authToken, dynamoDb);
-        const currentTime = new Date().toISOString();
-
         // Store the new version in the database
         const newPackage = {
             ECEfoursixone: metadata.ID, // New unique ID for the new version
@@ -609,10 +662,7 @@ export async function handlePackageUpdate(
             URL: data.URL || null,
             JSProgram: data.JSProgram || null,
             Metrics: metricsResult,
-            UploadedBy: userData.username,
-            UploadedAt: currentTime,
             Group: group, // Add group if Secret was true
-            DownloadInfo: [],
         };
 
         const putCommand = new PutCommand({
@@ -621,6 +671,26 @@ export async function handlePackageUpdate(
         });
 
         await dynamoDb.send(putCommand);
+
+        try {
+            console.log(`Updating history for deleted package: ${id}`);
+            await updateHistory(
+                dynamoDb,
+                authToken,
+                { Name: id.replace(/\d+$/, ""), Version: metadata.Version, ID: id },
+                "UPDATE"
+            );
+            console.log("History updated successfully.");
+        } catch (historyError) {
+            console.error("Error updating history:", historyError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to update history for the deleted package.",
+                }),
+            };
+        }
 
         return {
             statusCode: 200,
@@ -745,7 +815,7 @@ export const handlePackagesList = async (
 export async function handlePackageByRegEx(
     body: any,
     dynamoDb: DynamoDBDocumentClient
-): Promise<any> {
+): Promise<APIGatewayProxyResult> {
     try {
         if (!body) {
             return {
@@ -857,53 +927,188 @@ export async function handlePackageByRegEx(
 }
 
 export async function handlePackageHistory(
-    id: string,
+    packageName: string,
     dynamoDb: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
-        // Fetch the package data from DynamoDB
-        const command = new GetCommand({
-            TableName: TABLE_NAME,
-            Key: { ECEfoursixone: id },
-        });
-
-        const result = await dynamoDb.send(command);
-
-        // Check if the package exists
-        if (!result.Item) {
+        if (!packageName) {
             return {
-                statusCode: 404,
+                statusCode: 400,
                 headers: corsHeaders,
                 body: JSON.stringify({
-                    error: "Package not found.",
+                    error: "Package name is missing or invalid.",
                 }),
             };
         }
 
-        // Extract the relevant data
-        const { UploadedBy, UploadedAt, DownloadInfo } = result.Item;
-
-        // Construct the response
-        const response = {
-            UploadedBy,
-            UploadedAt,
-            DownloadInfo: DownloadInfo || [], // Return an empty array if no downloads are present
+        const params = {
+            TableName: "ECE461_HistoryTable",
+            KeyConditionExpression: "PackageName = :packageName",
+            ExpressionAttributeValues: {
+                ":packageName": packageName,
+            },
         };
+
+        const result = await dynamoDb.send(new QueryCommand(params));
+
+        if (!result.Items || result.Items.length === 0) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "No history found for the specified package.",
+                }),
+            };
+        }
+
+        // Transform the result into the expected structure
+        const historyEntries = result.Items.map((item: any) => ({
+            User: {
+                name: item.UserName,
+                isAdmin: item.IsAdmin,
+            },
+            Date: item.Date,
+            PackageMetadata: {
+                Name: item.PackageMetadata.Name,
+                Version: item.PackageMetadata.Version,
+                ID: item.PackageMetadata.ID,
+            },
+            Action: item.Action,
+        }));
 
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify(response),
+            body: JSON.stringify(historyEntries),
         };
     } catch (error) {
-        console.error("Error fetching package history:", error);
+        console.error("Error querying package history:", error);
         return {
             statusCode: 500,
             headers: corsHeaders,
             body: JSON.stringify({
-                error: "Internal Server Error",
+                error: "Failed to retrieve package history.",
                 details: error instanceof Error ? error.message : String(error),
             }),
         };
     }
 }
+
+export async function handlePackageDelete(
+    id: string,
+    dynamoDb: DynamoDBDocumentClient,
+    s3Client: S3Client,
+    authToken: string
+): Promise<APIGatewayProxyResult> {
+    try {
+        console.log(`Attempting to delete package with ID: ${id}`);
+
+        // Validate user credentials
+        const userData = await getUserInfo(authToken, dynamoDb);
+        if (!userData) {
+            return {
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Unauthorized or invalid token." }),
+            };
+        }
+
+        // Retrieve the package data
+        const getCommand = new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { ECEfoursixone: id },
+        });
+        const packageData = await dynamoDb.send(getCommand);
+
+        if (!packageData.Item) {
+            return {
+                statusCode: 404,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Package does not exist." }),
+            };
+        }
+
+        const { Version, URL } = packageData.Item;
+
+        // Construct the S3 file key
+        const s3FileKey = `packages/${id.toLowerCase()}.zip`;
+
+        // Delete the package from S3
+        try {
+            console.log(`Deleting file from S3: ${s3FileKey}`);
+            await s3Client.send(
+                new DeleteObjectCommand({
+                    Bucket: BUCKET_NAME,
+                    Key: s3FileKey,
+                })
+            );
+            console.log(`File deleted from S3: ${s3FileKey}`);
+        } catch (s3Error) {
+            console.error("Error deleting file from S3:", s3Error);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Failed to delete file from S3." }),
+            };
+        }
+
+        // Delete the package record from DynamoDB
+        try {
+            console.log(`Deleting package from DynamoDB: ${id}`);
+            await dynamoDb.send(
+                new DeleteCommand({
+                    TableName: TABLE_NAME,
+                    Key: { ECEfoursixone: id },
+                })
+            );
+            console.log(`Package deleted from DynamoDB: ${id}`);
+        } catch (dbError) {
+            console.error("Error deleting package from DynamoDB:", dbError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to delete package from DynamoDB.",
+                }),
+            };
+        }
+
+        try {
+            console.log(`Updating history for deleted package: ${id}`);
+            await updateHistory(
+                dynamoDb,
+                authToken,
+                { Name: id.replace(/\d+$/, ""), Version, ID: id },
+                "DELETE"
+            );
+            console.log("History updated successfully.");
+        } catch (historyError) {
+            console.error("Error updating history:", historyError);
+            return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Failed to update history for the deleted package.",
+                }),
+            };
+        }
+
+        // Return success response
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: "Package deleted successfully." }),
+        };
+    } catch (error) {
+        console.error("Error processing package deletion:", error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "An error occurred while processing the request.",
+                details: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}
+
