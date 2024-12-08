@@ -20,6 +20,8 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
         return null;
     }
 
+    const start = Date.now();
+
     if (repoURL.includes('npmjs.com')) {
         console.log('Processing NPM URL:', repoURL);
         const npmGithubUrl = await getGithubUrlFromNpm(repoURL);
@@ -37,33 +39,37 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
     try {
         // Define headers for API calls
         const headers = {
-            'Accept': 'application/vnd.github.v3+json',
-            'Authorization': `token ${process.env.GITHUB_TOKEN}`
+            Accept: 'application/vnd.github.v3+json',
+            Authorization: `token ${process.env.GITHUB_TOKEN}`,
         };
-
-        // Fetch URLs for commits and issues
-        const commitsUrl = `${GITHUB_API_URL}/commits`;
-        const issuesUrl = `${GITHUB_API_URL}/issues`;
 
         // Clone repo and locate README and License
         console.log('Cloning repository...');
+        const cloneStart = Date.now();
         const repoPath = await cloneRepo(repoURL);
+        const cloneLatency = (Date.now() - cloneStart) / 1000;
         console.log('Repository cloned at path:', repoPath);
+
         try {
             console.log('Searching for README...');
+            const readmeStart = Date.now();
             const readme = await findReadme(repoPath);
+            const readmeLatency = (Date.now() - readmeStart) / 1000;
             console.log('Found README:', readme);
 
             console.log('Searching for LICENSE...');
+            const licenseStart = Date.now();
             const license = await findLicense(repoPath, readme);
+            const licenseLatency = (Date.now() - licenseStart) / 1000;
             console.log('Found LICENSE:', license);
 
             console.log('Fetching data...');
-
+            const fetchStart = Date.now();
             const [uniqueContributors, issuesData] = await Promise.all([
-                fetchCommits(commitsUrl, headers),
-                fetchIssues(issuesUrl, headers),
+                fetchCommits(`${GITHUB_API_URL}/commits`, headers),
+                fetchIssues(`${GITHUB_API_URL}/issues`, headers),
             ]);
+            const fetchLatency = (Date.now() - fetchStart) / 1000;
 
             console.log('Fetched commits. Unique contributors:', uniqueContributors.length);
 
@@ -73,14 +79,15 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             );
 
             console.log('Calculating metrics...');
+            const metricsStart = Date.now();
             const [
                 { busFactorValue, busFactorLatency },
                 { correctnessValue, correctnessLatency },
                 { responsivenessValue, responsivenessLatency },
                 { rampUpTimeValue, rampUpTimeLatency },
-                { licenseCompatabilityValue, licenseLatency },
+                { licenseCompatabilityValue },
                 { value: dependencyPinningValue, latency: dependencyPinningLatency },
-                { value: codeReviewValue, latency: codeReviewLatency }
+                { value: codeReviewValue, latency: codeReviewLatency },
             ] = await Promise.all([
                 busFactor(uniqueContributors),
                 correctness(openIssues, closedIssues),
@@ -88,13 +95,15 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 rampUpTime(readme),
                 licensing(license),
                 dependencyPinning(repoPath),
-                codeReviewCoverage(GITHUB_API_URL, headers)
+                codeReviewCoverage(GITHUB_API_URL, headers),
             ]);
+            const metricsLatency = (Date.now() - metricsStart) / 1000;
+
             console.log('Metrics calculated successfully');
 
             // Calculate overall score
             console.log('Calculating overall score...');
-            const clockStart = Date.now();
+            const scoreStart = Date.now();
             const netScore = await calculateScore(
                 busFactorValue,
                 responsivenessValue,
@@ -104,26 +113,26 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 dependencyPinningValue,
                 codeReviewValue
             );
-            const scoreEnd = Date.now();
+            const scoreLatency = (Date.now() - scoreStart) / 1000;
             console.log('Score calculated:', netScore);
 
             const result: RepoDataResult = {
                 BusFactor: busFactorValue,
-                BusFactorLatency: busFactorLatency,
+                BusFactorLatency: busFactorLatency + cloneLatency,
                 Correctness: correctnessValue,
-                CorrectnessLatency: correctnessLatency,
+                CorrectnessLatency: correctnessLatency + fetchLatency,
                 RampUp: rampUpTimeValue,
-                RampUpLatency: rampUpTimeLatency,
+                RampUpLatency: rampUpTimeLatency + readmeLatency,
                 ResponsiveMaintainer: responsivenessValue,
-                ResponsiveMaintainerLatency: responsivenessLatency,
+                ResponsiveMaintainerLatency: responsivenessLatency + fetchLatency,
                 LicenseScore: licenseCompatabilityValue,
-                LicenseScoreLatency: licenseLatency,
+                LicenseScoreLatency: licenseLatency + licenseLatency,
                 GoodPinningPractice: dependencyPinningValue,
                 GoodPinningPracticeLatency: dependencyPinningLatency,
                 PullRequest: codeReviewValue,
                 PullRequestLatency: codeReviewLatency,
                 NetScore: netScore,
-                NetScoreLatency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + dependencyPinningLatency + licenseLatency + codeReviewLatency,
+                NetScoreLatency: metricsLatency + scoreLatency,
             };
             console.log('Final Result:', result);
             return result;
