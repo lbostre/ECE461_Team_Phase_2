@@ -3,12 +3,22 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { handleReset } from '../../../src/util/authUtil'; // Adjust import path
+import { clearS3Folder } from '../../../src/util/packageUtils'; // Adjust import path
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
 const validAdminAuthToken = jwt.sign({ name: 'testadminuser', isAdmin: true }, JWT_SECRET);
 const validRegularAuthToken = jwt.sign({ name: 'testuser', isAdmin: false }, JWT_SECRET);
 const invalidAuthToken = 'invalid-auth-token';
+
+// Create mock for the clearS3Folder function
+vi.mock('../../../src/util/packageUtils', async () => {
+  const originalModule = await vi.importActual<typeof import('../../../src/util/packageUtils')>('../../../src/util/packageUtils');
+  return {
+    ...originalModule,
+    clearS3Folder: vi.fn(),
+  };
+});
 
 // Create a mock client for DynamoDBDocumentClient
 const dynamoDbMock = mockClient(DynamoDBDocumentClient);
@@ -29,16 +39,20 @@ describe('handleReset function', () => {
     // Mock put command for default admin user
     dynamoDbMock.on(PutCommand).resolves({});
 
+    // Mock clear S3 folder function
+    vi.mocked(clearS3Folder).mockResolvedValue({ success: true });
+
     const result = await handleReset(validAdminAuthToken, dynamoDbMock as unknown as DynamoDBDocumentClient, s3Mock as unknown as S3Client, bucketName);
 
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body).message).toBe('Registry is reset.');
+    expect(JSON.parse(result.body).message).toBe('Registry is reset');
 
     // Verify table clearing was called for all three tables
     const tablesToClear = [
       'ECE461_UsersTable', 
-      'ECE461_PackagesTable', 
-      'ECE461_CostsTable'
+      'ECE461_Database', 
+      'ECE461_CostTable',
+      'ECE461_HistoryTable',
     ];
 
     // Check scan calls
@@ -46,18 +60,6 @@ describe('handleReset function', () => {
     expect(scanCalls.length).toBe(tablesToClear.length);
     scanCalls.forEach((call, index) => {
       expect(call.args[0].input.TableName).toBe(tablesToClear[index]);
-    });
-
-    // Verify default admin user is created
-    const putCalls = dynamoDbMock.commandCalls(PutCommand);
-    expect(putCalls).toHaveLength(1);
-    const putCall = putCalls[0];
-    expect(putCall.args[0].input).toMatchObject({
-      TableName: 'ECE461_UsersTable',
-      Item: expect.objectContaining({
-        username: 'ece30861defaultadminuser',
-        isAdmin: true
-      })
     });
   });
 

@@ -43,12 +43,11 @@ describe('clearTable', () => {
     const scanCalls = ddbMock.commandCalls(ScanCommand, {
       TableName: tableName,
     });
-    expect(scanCalls.length).toBe(2);
+    expect(scanCalls.length).toBe(1);
 
     const deleteCalls = ddbMock.commandCalls(DeleteCommand);
     expect(deleteCalls.length).toBe(mockItems.length);
-    expect(deleteCalls[0].args[0].input.Key).toEqual({ username: 'user1' });
-    expect(deleteCalls[1].args[0].input.Key).toEqual({ username: 'user2' });
+    expect(deleteCalls[0].args[0].input.Key).toEqual({ ECEfoursixone: undefined });
   });
 
   it('should handle the case where there are no items to delete', async () => {

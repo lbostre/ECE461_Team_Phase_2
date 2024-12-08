@@ -45,9 +45,8 @@ describe('handleAuthenticate', () => {
 
     const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
-    expect(result.statusCode).toBe(200);
-    const responseBody = JSON.parse(result.body);
-    expect(responseBody.token).toBe('bearer validToken');
+    expect(result.statusCode).toBe(200); 
+    expect(result.body).toBe('bearer validToken');  // Body is NOT stringified
 
     // Verify that the GetCommand was called with the expected parameters
     expect(ddbMock.commandCalls(GetCommand, {
@@ -126,8 +125,7 @@ describe('handleAuthenticate', () => {
     const result = await handleAuthenticate(body, ddbMock as unknown as DynamoDBDocumentClient);
 
     expect(result.statusCode).toBe(200);
-    const responseBody = JSON.parse(result.body);
-    expect(responseBody.token).toBe(`bearer ${newAuthToken}`);
+    expect(result.body).toBe(`bearer ${newAuthToken}`);
 
     // Verify that the GetCommand was called with the expected parameters
     expect(ddbMock.commandCalls(GetCommand, {
