@@ -1,6 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import axios from "axios";
 import DeleteUserAdmin from "@/components/DeleteUserAdmin";
 
 // Mock axios

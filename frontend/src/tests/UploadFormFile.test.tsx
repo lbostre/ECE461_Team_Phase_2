@@ -40,13 +40,6 @@ describe("UploadFormFile", () => {
         expect(screen.getByLabelText(/Package Zip File/i)).toBeInTheDocument();
     });
 
-    it("validates and prevents submission if the form is incomplete", async () => {
-        render(<UploadFormFile />);
-
-        const submitButton = screen.getByRole("button", { name: /Submit/i });
-        // expect(submitButton).toBeDisabled();
-    });
-
     it("submits the form when valid inputs are provided", async () => {
         (axios.post as Mock).mockResolvedValueOnce({ status: 201 });
 
