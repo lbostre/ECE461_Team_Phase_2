@@ -108,8 +108,20 @@ export async function uploadGithubRepoAsZipToS3(
         const [owner, repo] = githubRepoUrl.split("/").slice(-2);
         console.log(`Parsed GitHub owner: ${owner}, repo: ${repo}`);
 
+        // Fetch the repository details from GitHub API to get the default branch
+        const repoApiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+        console.log(`Fetching repository details from: ${repoApiUrl}`);
+        const repoResponse = await axios.get(repoApiUrl, {
+            headers: {
+                Accept: "application/vnd.github.v3+json",
+                Authorization: `token ${process.env.GITHUB_TOKEN}`, // Add token if needed
+            },
+        });
+        const defaultBranch = repoResponse.data.default_branch || "main";
+        console.log(`Default branch of the repository is: ${defaultBranch}`);
+
         // Construct the GitHub archive URL for the zip file
-        const githubZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
+        const githubZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/${defaultBranch}.zip`;
         console.log(`Constructed GitHub zip URL: ${githubZipUrl}`);
 
         // Download the zip file from GitHub
@@ -137,7 +149,7 @@ export async function uploadGithubRepoAsZipToS3(
 
         console.log(`Uploading file to S3: ${fileName}`);
         const command = new PutObjectCommand(params);
-        const data = await s3Client.send(command);
+        await s3Client.send(command);
         console.log(`File uploaded successfully.`);
 
         return zipBase64; // Return the uploaded file URL
