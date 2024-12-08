@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import UpdatePackageButton from "@/components/UpdatePackageButton";
 import { getAuthToken } from "@/utils/auth";
 import { downloadFile } from "@/utils/downloadFile";
 import axios from "axios";
@@ -333,7 +334,10 @@ export default function Package() {
                         </Table>
                     </div>
                 </div>
-                <DeletePackageButton packageID={name || ""} />
+                <div className="flex flex-row gap-2">
+                    <DeletePackageButton packageID={name || ""} />
+                    <UpdatePackageButton packageID={name || ""} />
+                </div>
             </div>
         </div>
     );

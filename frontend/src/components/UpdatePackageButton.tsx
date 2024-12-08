@@ -10,14 +10,14 @@ import axios from "axios";
 import { getAuthToken } from "@/utils/auth";
 import { useNavigate } from "react-router-dom";
 
-type DeletePackageButtonProps = {
+type UpdatePackageProps = {
     packageID: string;
 };
 
-export default function DeletePackageButton(props: DeletePackageButtonProps) {
+export default function UpdatePackageButton(props: UpdatePackageProps) {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
-    const deletePackage = async () => {
+    const updatePackage = async () => {
         const token = getAuthToken();
         try {
             const response = await axios.delete(
@@ -47,9 +47,9 @@ export default function DeletePackageButton(props: DeletePackageButtonProps) {
             <DialogTrigger asChild>
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                    className="px-4 py-2 rounded-md bg-yellow-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
                 >
-                    Delete Package
+                    Update Package
                 </button>
             </DialogTrigger>
             <DialogContent className="px-8 py-6">
@@ -64,10 +64,10 @@ export default function DeletePackageButton(props: DeletePackageButtonProps) {
                 </p>
                 <div className="flex flex-col items-end">
                     <button
-                        onClick={() => deletePackage()}
-                        className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                        onClick={() => console.log("update")}
+                        className="px-4 py-2 rounded-md bg-yellow-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
                     >
-                        Delete
+                        Update
                     </button>
                 </div>
             </DialogContent>
