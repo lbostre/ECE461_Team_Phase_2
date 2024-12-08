@@ -389,7 +389,7 @@ export async function fetchPackageById(
         // Construct the package response
         const packageData: Package = {
             metadata: {
-                Name: id.replace(/\d+$/, ""), // Extract Name if ID includes Version
+                Name: id.replace(/\d.*/, ""), // Extract Name if ID includes Version
                 Version: Version || "1.0.0",
                 ID: id,
             },
