@@ -243,34 +243,40 @@ export async function extractPackageJsonUrl(contentBase64: string): Promise<stri
 }
 
 export function getRepositoryUrlFromPackageJson(packageJson: any): string | null {
+    console.log("Extracting repository URL from:", packageJson.repository);
+
     const repository = packageJson?.repository;
 
-    if (!repository) return null;
+    if (!repository) {
+        console.error("No repository field found in package.json");
+        return null;
+    }
 
     let url = '';
 
-    // Case 1: repository as a string
     if (typeof repository === 'string') {
-        // Assume GitHub shorthand like "eslint/eslintrc"
+        console.log("Repository is a string:", repository);
         url = `https://github.com/${repository}`;
-    }
-
-    // Case 2: repository as an object with "url" field
-    else if (typeof repository === 'object' && repository.url) {
-        // Check if URL is in standard format or includes "git+"
+    } else if (typeof repository === 'object' && repository.url) {
+        console.log("Repository is an object with URL:", repository.url);
         url = repository.url.startsWith('git+') ? repository.url.slice(4) : repository.url;
-        url = repository.url.startsWith('git') ? repository.url.slice(4) : repository.url;
+        if (url.endsWith('.git')) {
+            url = url.slice(0, -4);
+        }
+    } else {
+        console.error("Repository field is in an unsupported format:", repository);
+        return null;
     }
 
-    // Step 5: Strip trailing ".git" if present and ensure format
-    if (url.endsWith('.git')) {
-        url = url.slice(0, -4);
-    }
-
-    // Validate URL structure and ensure it's in GitHub format
-    const match = url.match(/https?:\/\/github\.com\/([^/]+)\/([^/]+)/);
-    if (match) {
-        return `https://github.com/${match[1]}/${match[2]}`;
+    try {
+        const urlObj = new URL(url);
+        if (urlObj.hostname === 'github.com') {
+            console.log("Final GitHub URL:", urlObj.href);
+            return `https://${urlObj.hostname}${urlObj.pathname}`;
+        }
+    } catch (error) {
+        console.error("Invalid repository URL format:", url);
+        return null;
     }
 
     return null;
