@@ -1,4 +1,5 @@
 import CreateUser from "@/components/CreateUser";
+import DeleteUserAdmin from "@/components/DeleteUserAdmin";
 import DeleteUserButton from "@/components/DeleteUserButton";
 import ResetRegistryButton from "@/components/ResetRegistryButton";
 import { getAuthToken } from "@/utils/auth";
@@ -10,7 +11,7 @@ export type User = {
     password: string;
     isAdmin: boolean;
     permissions: Array<"upload" | "search" | "download">; // Enum-like permissions
-    group: "default" | string; // Group can be 'default' or other strings
+    group: string; // Group can be 'default' or other strings
 };
 
 export default function Account() {
@@ -64,13 +65,20 @@ export default function Account() {
                         </p>
                         <p className="text-xl">
                             Group:{" "}
-                            <span className="font-bold">{userInfo?.group}</span>
+                            <span className="font-bold">
+                                {userInfo?.group ?? "N/A"}
+                            </span>
                         </p>
                     </div>
                 </div>
                 {userInfo?.isAdmin && (
                     <div className="flex flex-col border p-4 rounded-lg">
                         <CreateUser />
+                    </div>
+                )}
+                {userInfo?.isAdmin && (
+                    <div className="flex flex-col border p-4 rounded-lg">
+                        <DeleteUserAdmin />
                     </div>
                 )}
                 {userInfo?.isAdmin && (
