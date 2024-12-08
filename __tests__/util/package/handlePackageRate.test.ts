@@ -2,9 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handlePackageRate } from '../../../src/package';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import jwt from 'jsonwebtoken';
 
-// Test handlePackageRate function
-
+const JWT_SECRET = "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
+const validAdminAuthToken = jwt.sign({ name: 'testadminuser', isAdmin: true }, JWT_SECRET);
+const validRegularAuthToken = jwt.sign({ name: 'testuser', isAdmin: false }, JWT_SECRET);
+const invalidAuthToken = 'invalid-auth-token';
 
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -59,7 +62,7 @@ describe('handlePackageRate', () => {
     });
 
     it('should return the package rating for a valid package ID', async () => {
-        const result = await handlePackageRate(validPackageId, ddbMock as unknown as DynamoDBDocumentClient);
+        const result = await handlePackageRate(validPackageId, ddbMock as unknown as DynamoDBDocumentClient, validRegularAuthToken);
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
@@ -73,7 +76,7 @@ describe('handlePackageRate', () => {
     });
 
     it('should return 404 if the package does not exist', async () => {
-        const result = await handlePackageRate(invalidPackageId, ddbMock as unknown as DynamoDBDocumentClient);
+        const result = await handlePackageRate(invalidPackageId, ddbMock as unknown as DynamoDBDocumentClient, validRegularAuthToken);
 
         expect(result.statusCode).toBe(404);
         const responseBody = JSON.parse(result.body);
@@ -83,7 +86,7 @@ describe('handlePackageRate', () => {
     it('should return 500 if there is an internal server error', async () => {
         ddbMock.on(GetCommand).rejects(new Error('Internal Server Error'));
 
-        const result = await handlePackageRate(validPackageId, ddbMock as unknown as DynamoDBDocumentClient);
+        const result = await handlePackageRate(validPackageId, ddbMock as unknown as DynamoDBDocumentClient, validRegularAuthToken);
 
         expect(result.statusCode).toBe(500);
         const responseBody = JSON.parse(result.body);

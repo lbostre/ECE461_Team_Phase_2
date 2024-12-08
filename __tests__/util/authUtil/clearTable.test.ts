@@ -21,6 +21,7 @@ beforeEach(() => {
 });
 
 const tableName = 'ECE461_UsersTable';
+const key = 'ECEfoursixone';
 
 const mockItems = [
   { username: 'user1' },
@@ -37,7 +38,7 @@ describe('clearTable', () => {
     ddbMock.on(ScanCommand).resolvesOnce(mockScanResponse).resolvesOnce({ Items: [] });
     ddbMock.on(DeleteCommand).resolves({});
 
-    await clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient);
+    await clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient, key);
 
     const scanCalls = ddbMock.commandCalls(ScanCommand, {
       TableName: tableName,
@@ -53,7 +54,7 @@ describe('clearTable', () => {
   it('should handle the case where there are no items to delete', async () => {
     ddbMock.on(ScanCommand).resolves({ Items: [] });
 
-    await clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient);
+    await clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient, key);
 
     const scanCalls = ddbMock.commandCalls(ScanCommand, {
       TableName: tableName,
@@ -67,7 +68,7 @@ describe('clearTable', () => {
   it('should throw an error if there is an internal server error', async () => {
     ddbMock.on(ScanCommand).rejects(new Error('Internal Server Error'));
 
-    await expect(clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient)).rejects.toThrow('Internal Server Error');
+    await expect(clearTable(tableName, ddbMock as unknown as DynamoDBDocumentClient, key)).rejects.toThrow('Internal Server Error');
 
     const scanCalls = ddbMock.commandCalls(ScanCommand, {
       TableName: tableName,

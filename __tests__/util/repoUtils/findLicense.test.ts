@@ -24,7 +24,7 @@ describe('findLicense', () => {
     // Mock fs.promises.readFile to return the content of the LICENSE file
     vi.mocked(fs.promises.readFile).mockResolvedValue('MIT License');
 
-    const result = await findLicense(repoPath, null);
+    const result = await findLicense(repoPath);
 
     expect(result).toBe('MIT');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
@@ -40,7 +40,7 @@ describe('findLicense', () => {
       return Promise.resolve('');
     });
 
-    const result = await findLicense(repoPath, null);
+    const result = await findLicense(repoPath);
 
     expect(result).toBe('Apache 2.0');
     expect(fs.promises.readFile).toHaveBeenCalledWith(path.join(repoPath, 'package.json'), 'utf8');
@@ -55,7 +55,7 @@ describe('findLicense', () => {
     // Mock fs.promises.readFile to return the content of the README file
     vi.mocked(fs.promises.readFile).mockResolvedValue('This project is licensed under the MIT License.');
 
-    const result = await findLicense(repoPath, readmePath);
+    const result = await findLicense(repoPath);
 
     expect(result).toBe('MIT');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
@@ -68,7 +68,7 @@ describe('findLicense', () => {
       { isFile: () => true, name: 'index.js' } as fs.Dirent,
     ]);
 
-    await expect(findLicense(repoPath, null)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
+    await expect(findLicense(repoPath)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
   });
 
@@ -76,7 +76,7 @@ describe('findLicense', () => {
     // Mock fs.promises.readdir to throw an error
     vi.mocked(fs.promises.readdir).mockRejectedValue(new Error('Failed to read directory'));
 
-    await expect(findLicense(repoPath, null)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
+    await expect(findLicense(repoPath)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
   });
 });
