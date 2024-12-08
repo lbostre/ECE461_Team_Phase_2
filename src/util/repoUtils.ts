@@ -4,6 +4,7 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import git from "isomorphic-git";
 import http from 'isomorphic-git/http/node/index.js';
+import { PullRequest, PullRequestFile } from '../../types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -201,50 +202,56 @@ export async function dependencyPinning(repoPath: string): Promise<{ value: numb
 }
 
 export async function codeReviewCoverage(
-  repoURL: string,
-  headers: Record<string, string>
-): Promise<{ value: number; latency: number }> {
-  const start = Date.now();
-  const pullsUrl = `${repoURL}/pulls?state=closed&per_page=100`;
-
-  try {
-    const pullRequestsResponse = await axios.get(pullsUrl, { headers });
-    const pullRequests = pullRequestsResponse.data;
-
-    if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
-      return { value: 1.0, latency: (Date.now() - start) / 1000 };
-    }
-
-    let reviewedLOC = 0;
-    let totalLOC = 0;
-
-    for (const pr of pullRequests) {
-      if (pr.merged_at && pr.requested_reviewers && pr.requested_reviewers.length > 0) {
-        const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
-        const prFilesResponse = await axios.get(prFilesUrl, { headers });
-        const prFiles = prFilesResponse.data;
-
-        const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
-        reviewedLOC += loc;
-        totalLOC += loc; // Add LOC to total only if the PR is merged and reviewed
-      } else if (pr.merged_at) {
-        // If the PR is merged but not reviewed
-        const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
-        const prFilesResponse = await axios.get(prFilesUrl, { headers });
-        const prFiles = prFilesResponse.data;
-
-        const loc = prFiles.reduce((sum: number, file: any) => sum + file.changes, 0);
-        totalLOC += loc; // Add LOC to total
+    repoURL: string,
+    headers: Record<string, string>
+  ): Promise<{ value: number; latency: number }> {
+    const start = Date.now();
+    const pullsUrl = `${repoURL}/pulls?state=closed&per_page=100`;
+  
+    try {
+      const pullRequestsResponse = await axios.get(pullsUrl, { headers });
+      const pullRequests: PullRequest[] = pullRequestsResponse.data;
+  
+      if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
+        return { value: 1.0, latency: (Date.now() - start) / 1000 };
       }
-      // Don't add to totalLOC if PR is not merged
+  
+      // Filter only merged PRs
+      const mergedPRs = pullRequests.filter((pr) => pr.merged_at);
+  
+      if (mergedPRs.length === 0) {
+        return { value: 1.0, latency: (Date.now() - start) / 1000 };
+      }
+  
+      let reviewedLOC = 0;
+      let totalLOC = 0;
+  
+      // Fetch PR files for each merged PR
+      for (const pr of mergedPRs) {
+        try {
+          const prFilesUrl = `${repoURL}/pulls/${pr.number}/files`;
+          const prFilesResponse = await axios.get(prFilesUrl, { headers });
+          const prFiles: PullRequestFile[] = prFilesResponse.data;
+  
+          const loc = prFiles.reduce((sum, file) => sum + file.changes, 0);
+          totalLOC += loc;
+  
+          // If PR has requested reviewers, count LOC as reviewed
+          if (pr.requested_reviewers && pr.requested_reviewers.length > 0) {
+            reviewedLOC += loc;
+          }
+        } catch (error) {
+          console.error(`Error fetching files for PR #${pr.number}:`, error);
+          // Skip this PR if there was an error fetching its files
+        }
+      }
+  
+      // Calculate coverage
+      const coverage = totalLOC === 0 ? 1.0 : reviewedLOC / totalLOC;
+  
+      return { value: coverage, latency: (Date.now() - start) / 1000 };
+    } catch (error) {
+      console.error('Error fetching code review coverage:', error);
+      return { value: 0, latency: (Date.now() - start) / 1000 };
     }
-
-    // If totalLOC is 0, set coverage to 1.0
-    const coverage = totalLOC === 0 ? 1.0 : reviewedLOC / totalLOC;
-
-    return { value: coverage, latency: (Date.now() - start) / 1000 };
-  } catch (error) {
-    console.error('Error fetching code review coverage:', error);
-    return { value: 0, latency: (Date.now() - start) / 1000 };
-  }
 }

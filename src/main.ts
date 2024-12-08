@@ -58,14 +58,19 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             const license = await findLicense(repoPath, readme);
             console.log('Found LICENSE:', license);
 
-            // Fetch data from API
-            console.log('Fetching commits...');
-            const uniqueContributors = await fetchCommits(commitsUrl, headers);
+            console.log('Fetching data...');
+
+            const [uniqueContributors, issuesData] = await Promise.all([
+                fetchCommits(commitsUrl, headers),
+                fetchIssues(issuesUrl, headers),
+            ]);
+
             console.log('Fetched commits. Unique contributors:', uniqueContributors.length);
 
-            console.log('Fetching issues...');
-            const { openIssues, closedIssues, issueDurations } = await fetchIssues(issuesUrl, headers);
-            console.log(`Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`);
+            const { openIssues, closedIssues, issueDurations } = issuesData;
+            console.log(
+                `Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`
+            );
 
             console.log('Calculating metrics...');
             const [
@@ -75,7 +80,7 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 { rampUpTimeValue, rampUpTimeLatency },
                 { licenseCompatabilityValue, licenseLatency },
                 { value: dependencyPinningValue, latency: dependencyPinningLatency },
-                //{ value: codeReviewValue, latency: codeReviewLatency }
+                { value: codeReviewValue, latency: codeReviewLatency }
             ] = await Promise.all([
                 busFactor(uniqueContributors),
                 correctness(openIssues, closedIssues),
@@ -83,7 +88,7 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 rampUpTime(readme),
                 licensing(license),
                 dependencyPinning(repoPath),
-                //codeReviewCoverage(GITHUB_API_URL, headers)
+                codeReviewCoverage(GITHUB_API_URL, headers)
             ]);
             console.log('Metrics calculated successfully');
 
@@ -113,8 +118,8 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 LicenseScoreLatency: licenseLatency,
                 GoodPinningPractice: dependencyPinningValue,
                 GoodPinningPracticeLatency: dependencyPinningLatency,
-                PullRequest: -1,
-                PullRequestLatency: -1,
+                PullRequest: codeReviewValue,
+                PullRequestLatency: codeReviewLatency,
                 NetScore: netScore,
                 NetScoreLatency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + dependencyPinningLatency + licenseLatency,
             };

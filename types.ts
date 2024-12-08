@@ -123,3 +123,13 @@ export interface Repository {
 export interface CommitsResponseData {
     repository: Repository | null;
 }
+
+export interface PullRequest {
+    number: number;
+    merged_at: string | null;
+    requested_reviewers: Array<{ login: string }> | null;
+  }
+  
+export interface PullRequestFile {
+    changes: number;
+}
