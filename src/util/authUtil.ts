@@ -499,7 +499,9 @@ export async function handleReset(
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: "Registry is reset.",
+            body: JSON.stringify({
+                message: "Registry is reset",
+            }),
         };
     } catch (error) {
         console.error("Error resetting the registry:", error);
