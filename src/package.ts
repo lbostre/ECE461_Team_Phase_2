@@ -207,6 +207,25 @@ export async function handlePackagePost(
         if (metricsResult && metricsResult.NetScore >= 0.5) {
             if (zipBase64 || s3Url) {
                 try {
+                    const orderedMetricsResult = {
+                        BusFactor: metricsResult.BusFactor,
+                        BusFactorLatency: metricsResult.BusFactorLatency,
+                        Correctness: metricsResult.Correctness,
+                        CorrectnessLatency: metricsResult.CorrectnessLatency,
+                        RampUp: metricsResult.RampUp,
+                        RampUpLatency: metricsResult.RampUpLatency,
+                        ResponsiveMaintainer: metricsResult.ResponsiveMaintainer,
+                        ResponsiveMaintainerLatency: metricsResult.ResponsiveMaintainerLatency,
+                        LicenseScore: metricsResult.LicenseScore,
+                        LicenseScoreLatency: metricsResult.LicenseScoreLatency,
+                        GoodPinningPractice: metricsResult.GoodPinningPractice,
+                        GoodPinningPracticeLatency: metricsResult.GoodPinningPracticeLatency,
+                        PullRequest: metricsResult.PullRequest,
+                        PullRequestLatency: metricsResult.PullRequestLatency,
+                        NetScore: metricsResult.NetScore,
+                        NetScoreLatency: metricsResult.NetScoreLatency,
+                    };
+
                     const dynamoParams = {
                         TableName: TABLE_NAME,
                         Item: {
@@ -214,7 +233,7 @@ export async function handlePackagePost(
                             Version: version,
                             URL: url,
                             JSProgram: data.JSProgram,
-                            Metrics: metricsResult,
+                            Metrics: orderedMetricsResult,
                             UploadedBy: userData.username,
                             UploadedAt: currentTime,
                             Group: group,
@@ -342,7 +361,7 @@ export async function handlePackageRate(
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify({ PackageRating: metrics }),
+            body: metrics,
         };
     } catch (error) {
         console.error(

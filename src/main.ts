@@ -123,7 +123,7 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 PullRequest: codeReviewValue,
                 PullRequestLatency: codeReviewLatency,
                 NetScore: netScore,
-                NetScoreLatency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + dependencyPinningLatency + licenseLatency,
+                NetScoreLatency: busFactorLatency + correctnessLatency + rampUpTimeLatency + responsivenessLatency + dependencyPinningLatency + licenseLatency + codeReviewLatency,
             };
             console.log('Final Result:', result);
             return result;
