@@ -766,7 +766,7 @@ export const handlePackagesList = async (
 
                 const items = response.Items || [];
                 const matchingPackages = items.filter((item: any) => {
-                    const packageName = item.packageID.replace(/\d+$/, ""); 
+                    const packageName = item.ECEfoursixone.replace(/\d+$/, ""); 
                     return packageName === query.Name;
                 });
 
