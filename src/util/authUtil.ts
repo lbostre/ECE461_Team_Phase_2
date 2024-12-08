@@ -60,7 +60,7 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
             return {
                 statusCode: 200,
                 headers: corsHeaders,
-                body: JSON.stringify({ token: `bearer ${user.authToken}` }),
+                body: `bearer ${user.authToken}`,
             };
         }
 
@@ -87,7 +87,7 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify({ token: `bearer ${newAuthToken}` }),
+            body: `bearer ${newAuthToken}`,
         };
     } catch (error) {
         console.error("Error handling authentication:", error);
@@ -462,7 +462,7 @@ export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<
                         TableName: "ECE461_UsersTable",
                         Key: { username },
                     });
-                    await dynamoDb.send(deleteCommand);
+                    await dynamoDb.send(deleteCommand);0
                     console.log(`Deleted user: ${username}`);
                 }
             }
