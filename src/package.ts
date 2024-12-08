@@ -964,10 +964,10 @@ export async function handlePackageHistory(
         // Transform the result into the expected structure
         const historyEntries = result.Items.map((item: any) => ({
             User: {
-                name: item.UserName,
-                isAdmin: item.IsAdmin,
+                name: item.User.userName,
+                isAdmin: item.User.isAdmin,
             },
-            Date: item.Date,
+            Date: item.Timestamp,
             PackageMetadata: {
                 Name: item.PackageMetadata.Name,
                 Version: item.PackageMetadata.Version,
