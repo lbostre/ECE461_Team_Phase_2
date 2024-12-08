@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import jwt from 'jsonwebtoken';
 import { deleteUser } from '../../../src/util/authUtil';
-import { DynamoDBDocumentClient, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 // Mock the DynamoDB DocumentClient
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -23,6 +23,9 @@ beforeEach(() => {
 describe('deleteUser', () => {
     it('should delete their own account if the name matches their username', async () => {
         const token = jwt.sign({ name: 'testuser', isAdmin: false }, JWT_SECRET);
+
+        ddbMock.on(GetCommand).resolves({ Item: { username: 'testuser' } });
+        ddbMock.on(DeleteCommand).resolves({});
 
         const result = await deleteUser(`bearer ${token}`, 'testuser', ddbMock as unknown as DynamoDBDocumentClient);
 
@@ -44,6 +47,7 @@ describe('deleteUser', () => {
     it('should delete the user account if the user is authorized', async () => {
         const token = jwt.sign({ name: 'adminuser', isAdmin: true }, JWT_SECRET);
 
+        ddbMock.on(GetCommand).resolves({ Item: { username: 'nottestuser' } });
         ddbMock.on(DeleteCommand).resolves({});
 
         const result = await deleteUser(`bearer ${token}`, 'testuser', ddbMock as unknown as DynamoDBDocumentClient);
