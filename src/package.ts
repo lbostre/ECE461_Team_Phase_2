@@ -770,7 +770,7 @@ export const handlePackagesList = async (
                 const matchingPackages = items
                     .filter((item: any) => {
                         const packageName = item.ECEfoursixone.replace(/\d.*/, ""); // Extract name from packageID
-                        return packageName.contains(query.Name.toLowerCase());
+                        return packageName === query.Name.toLowerCase();
                     })
                     .map((item: any) => ({
                         Version: item.Version,
