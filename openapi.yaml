@@ -692,7 +692,93 @@ paths:
         '404':
           description: User does not exist.
       operationId: DeleteUser
-
+  /package/byName/{name}:
+    get:
+      parameters:
+      - examples:
+          ExampleToken:
+            value: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        name: X-Authorization
+        description: ""
+        schema:
+          $ref: '#/components/schemas/AuthenticationToken'
+        in: header
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PackageHistoryEntry'
+              examples:
+                zaza:
+                  value:
+                  - User:
+                      name: James Davis
+                      isAdmin: true
+                    Date: 2023-03-23T23:11:15Z
+                    PackageMetadata:
+                      Name: Underscore
+                      Version: 1.0.0
+                      ID: underscore
+                    Action: DOWNLOAD
+                  - User:
+                      name: James Davis
+                      isAdmin: true
+                    Date: 2023-03-22T23:06:25Z
+                    PackageMetadata:
+                      Name: Underscore
+                      Version: 1.0.0
+                      ID: underscore
+                    Action: UPDATE
+                  - User:
+                      name: James Davis
+                      isAdmin: true
+                    Date: 2023-03-21T22:59:40Z
+                    PackageMetadata:
+                      Name: Underscore
+                      Version: 1.0.0
+                      ID: underscore
+                    Action: RATE
+                  - User:
+                      name: James Davis
+                      isAdmin: true
+                    Date: 2023-03-20T22:45:31Z
+                    PackageMetadata:
+                      Name: Underscore
+                      Version: 1.0.0
+                      ID: underscore
+                    Action: CREATE
+          description: Return the package history.
+        "400":
+          description: "There is missing field(s) in the PackageName or it is formed improperly, or is invalid."
+        403:
+          description: Authentication failed due to invalid or missing AuthenticationToken.
+        "404":
+          description: No such package.
+      operationId: PackageByNameGet
+      summary: (NON-BASELINE)
+      description: Return the history of this package (all versions).
+    parameters:
+    - examples:
+        ExampleName:
+          value: Underscore
+      name: name
+      schema:
+        $ref: '#/components/schemas/PackageName'
+      in: path
+      required: true
+    - examples:
+        ExampleToken:
+          value: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+      name: X-Authorization
+      description: ""
+      schema:
+        $ref: '#/components/schemas/AuthenticationToken'
+      in: header
+      required: true
 
 components:
   schemas:
