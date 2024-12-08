@@ -117,7 +117,7 @@ describe('getRepoData', () => {
         expect(result).not.toBeNull();
         expect(repoUtils.cloneRepo).toHaveBeenCalledWith(repoURL);
         expect(repoUtils.findReadme).toHaveBeenCalledWith('/path/to/repo');
-        expect(repoUtils.findLicense).toHaveBeenCalledWith('/path/to/repo', 'README content');
+        expect(repoUtils.findLicense).toHaveBeenCalledWith('/path/to/repo');
         expect(fetchData.fetchCommits).toHaveBeenCalledWith('https://api.github.com/repos/test/repo/commits', expect.any(Object));
         expect(fetchData.fetchIssues).toHaveBeenCalledWith('https://api.github.com/repos/test/repo/issues', expect.any(Object));
         expect(busFactor.busFactor).toHaveBeenCalledWith([['contributor1', 1], ['contributor2', 2]]);
@@ -127,7 +127,7 @@ describe('getRepoData', () => {
         expect(licensing.licensing).toHaveBeenCalledWith('LICENSE content');
         expect(repoUtils.dependencyPinning).toHaveBeenCalledWith('/path/to/repo');
         expect(repoUtils.codeReviewCoverage).toHaveBeenCalledWith('https://api.github.com/repos/test/repo', expect.any(Object));
-        expect(calculateScore.calculateScore).toHaveBeenCalledWith(0.8, 0.7, 0.9, 0.6, 1.0);
+        expect(calculateScore.calculateScore).toHaveBeenCalledWith(0.8, 0.7, 0.9, 0.6, 1.0, 0.9, 0.75);
     });
 
     it('should handle errors and return null', async () => {
