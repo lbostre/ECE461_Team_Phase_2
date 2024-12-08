@@ -1,12 +1,24 @@
 import { APIGatewayProxyResult } from "aws-lambda";
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import {
+    DynamoDBDocumentClient,
+    GetCommand,
+    UpdateCommand,
+    PutCommand,
+    DeleteCommand,
+    ScanCommand,
+} from "@aws-sdk/lib-dynamodb";
 import jwt from "jsonwebtoken";
 import { AuthenticationRequest } from "../../types.js";
-import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import {
+    S3Client,
+    ListObjectsV2Command,
+    DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import { clearS3Folder } from "./packageUtils.js";
 
 const USER_TABLE_NAME = "ECE461_UsersTable";
-const JWT_SECRET = process.env.JWT_SECRET || "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
+const JWT_SECRET =
+    process.env.JWT_SECRET || "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*", // Allow requests from any origin
@@ -15,15 +27,23 @@ const corsHeaders = {
 };
 
 const endpointPermissions: Record<string, string[]> = {
-    search: ["/packages", "/package/{id}/rate", "/package/{id}/cost", "/package/byRegEx"],
+    search: [
+        "/packages",
+        "/package/{id}/rate",
+        "/package/{id}/cost",
+        "/package/byRegEx",
+    ],
     upload: ["/package/{id}", "/package"],
-    download: ["/package/{id}"]
+    download: ["/package/{id}"],
 };
 
 // Handle authentication requests and token creation
-export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
+export async function handleAuthenticate(
+    body: any,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<APIGatewayProxyResult> {
     try {
-        const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
+        const parsedBody = typeof body === "string" ? JSON.parse(body) : body;
 
         if (!parsedBody || !parsedBody.User || !parsedBody.Secret) {
             return {
@@ -38,10 +58,12 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
         const { User, Secret }: AuthenticationRequest = parsedBody;
 
         // Validate user credentials from the database
-        const userResult = await dynamoDb.send(new GetCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: User.name },
-        }));
+        const userResult = await dynamoDb.send(
+            new GetCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: User.name },
+            })
+        );
 
         // Log for debugging purposes
         console.log("User result:", userResult);
@@ -50,14 +72,20 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
             return {
                 statusCode: 401,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "The username or password is invalid." }),
+                body: JSON.stringify({
+                    error: "The username or password is invalid.",
+                }),
             };
         }
 
         const user = userResult.Item;
 
         // Check if the current token is expired or past 1000 API interactions
-        if (user.expiresAt > Math.floor(Date.now() / 1000) && user.callCount <= 1000 && user.authToken) {
+        if (
+            user.expiresAt > Math.floor(Date.now() / 1000) &&
+            user.callCount <= 1000 &&
+            user.authToken
+        ) {
             console.log("Returning existing unexpired token.");
             return {
                 statusCode: 200,
@@ -75,16 +103,19 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
         );
 
         // Update the token and expiration time in the database
-        await dynamoDb.send(new UpdateCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: User.name },
-            UpdateExpression: "SET authToken = :authToken, expiresAt = :expiresAt, callCount = :callCount",
-            ExpressionAttributeValues: {
-                ":authToken": newAuthToken,
-                ":expiresAt": Math.floor(Date.now() / 1000) + 10 * 60 * 60, // 10 hours in seconds
-                ":callCount": 0, // Reset call count for the new token
-            },
-        }));
+        await dynamoDb.send(
+            new UpdateCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: User.name },
+                UpdateExpression:
+                    "SET authToken = :authToken, expiresAt = :expiresAt, callCount = :callCount",
+                ExpressionAttributeValues: {
+                    ":authToken": newAuthToken,
+                    ":expiresAt": Math.floor(Date.now() / 1000) + 10 * 60 * 60, // 10 hours in seconds
+                    ":callCount": 0, // Reset call count for the new token
+                },
+            })
+        );
 
         return {
             statusCode: 200,
@@ -104,33 +135,43 @@ export async function handleAuthenticate(body: any, dynamoDb: DynamoDBDocumentCl
 // Register a new user and generate an authentication token
 export async function registerUser(
     authToken: string,
-    newUser: { name: string; password: string; isAdmin: boolean; permissions: string[]; group: string },
+    newUser: {
+        name: string;
+        password: string;
+        isAdmin: boolean;
+        permissions: string[];
+        group: string;
+    },
     dynamoDb: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
         const token = authToken.replace("bearer ", "").trim();
         const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
-        
+
         if (!decoded || !decoded.isAdmin) {
             return {
                 statusCode: 403,
-                body: JSON.stringify({ error: "Only admins can register users." }),
+                body: JSON.stringify({
+                    error: "Only admins can register users.",
+                }),
             };
         }
 
         // Store the new user details in DynamoDB
-        await dynamoDb.send(new PutCommand({
-            TableName: USER_TABLE_NAME,
-            Item: {
-                username: newUser.name,
-                password: newUser.password, 
-                isAdmin: newUser.isAdmin,
-                permissions: newUser.permissions,
-                group: newUser.group,
-                callCount: 0,
-                expiresAt: Math.floor(Date.now() / 1000) + 10 * 60 * 60, // 10 hours in seconds
-            },
-        }));
+        await dynamoDb.send(
+            new PutCommand({
+                TableName: USER_TABLE_NAME,
+                Item: {
+                    username: newUser.name,
+                    password: newUser.password,
+                    isAdmin: newUser.isAdmin,
+                    permissions: newUser.permissions,
+                    group: newUser.group,
+                    callCount: 0,
+                    expiresAt: Math.floor(Date.now() / 1000) + 10 * 60 * 60, // 10 hours in seconds
+                },
+            })
+        );
 
         return {
             statusCode: 201,
@@ -166,7 +207,7 @@ export async function validateToken(
         const result = await dynamoDb.send(
             new GetCommand({
                 TableName: USER_TABLE_NAME,
-                Key: { username: decoded.name }
+                Key: { username: decoded.name },
             })
         );
 
@@ -207,7 +248,10 @@ export async function validateToken(
 
         // If the endpoint requires permission and the user does not have it, deny access
         if (requiresPermission && !hasPermission) {
-            return { isValid: false, error: "User does not have permission for this endpoint." };
+            return {
+                isValid: false,
+                error: "User does not have permission for this endpoint.",
+            };
         }
 
         // Increment the API call count
@@ -216,7 +260,7 @@ export async function validateToken(
                 TableName: USER_TABLE_NAME,
                 Key: { username: decoded.name },
                 UpdateExpression: "SET callCount = callCount + :inc",
-                ExpressionAttributeValues: { ":inc": 1 }
+                ExpressionAttributeValues: { ":inc": 1 },
             })
         );
 
@@ -228,7 +272,11 @@ export async function validateToken(
 }
 
 // Function to delete user account
-export async function deleteUser(authToken: string, username: string, dynamoDb: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> {
+export async function deleteUser(
+    authToken: string,
+    username: string,
+    dynamoDb: DynamoDBDocumentClient
+): Promise<APIGatewayProxyResult> {
     try {
         const token = authToken.replace("bearer ", "").trim();
         const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
@@ -241,15 +289,19 @@ export async function deleteUser(authToken: string, username: string, dynamoDb: 
             };
         }
 
-        await dynamoDb.send(new DeleteCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username },
-        }));
+        const response = await dynamoDb.send(
+            new DeleteCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username },
+            })
+        );
 
-        return { 
-            statusCode: 200, 
-            headers: corsHeaders, 
-            body: JSON.stringify({ message: "User deleted successfully." })
+        console.log(response);
+
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: "User deleted successfully." }),
         };
     } catch (error) {
         console.error("Error deleting user:", error);
@@ -274,15 +326,19 @@ export async function handleGetUser(
             return {
                 statusCode: 403,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
 
         // Fetch the user data from DynamoDB using the username
-        const result = await dynamoDb.send(new GetCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: decoded.name },
-        }));
+        const result = await dynamoDb.send(
+            new GetCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: decoded.name },
+            })
+        );
 
         if (!result.Item) {
             return {
@@ -311,7 +367,9 @@ export async function handleGetUser(
             return {
                 statusCode: 403,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
         console.error("Error fetching user data:", error);
@@ -329,7 +387,10 @@ export async function getGroups(
 ): Promise<string | null> {
     try {
         // Verify and decode the JWT token
-        const decoded = jwt.verify(authToken.replace("bearer ", "").trim(), JWT_SECRET) as jwt.JwtPayload;
+        const decoded = jwt.verify(
+            authToken.replace("bearer ", "").trim(),
+            JWT_SECRET
+        ) as jwt.JwtPayload;
 
         if (!decoded || !decoded.name) {
             console.error("Invalid token or missing username.");
@@ -365,12 +426,17 @@ export async function handleReset(
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if the user is an admin
-        const decoded = jwt.verify(authToken.replace("bearer ", "").trim(), JWT_SECRET) as jwt.JwtPayload;
+        const decoded = jwt.verify(
+            authToken.replace("bearer ", "").trim(),
+            JWT_SECRET
+        ) as jwt.JwtPayload;
         if (!decoded.isAdmin) {
             return {
                 statusCode: 401,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "You do not have permission to reset the registry." }),
+                body: JSON.stringify({
+                    error: "You do not have permission to reset the registry.",
+                }),
             };
         }
 
@@ -379,7 +445,12 @@ export async function handleReset(
             clearUserTable(dynamoDb),
             clearTable("ECE461_Database", dynamoDb, "ECEfoursixone"),
             clearTable("ECE461_CostTable", dynamoDb, "packageID"),
-            clearTable("ECE461_HistoryTable", dynamoDb, "PackageName", "Timestamp"),
+            clearTable(
+                "ECE461_HistoryTable",
+                dynamoDb,
+                "PackageName",
+                "Timestamp"
+            ),
         ]);
 
         if (clearResults.some((result: any) => result instanceof Error)) {
@@ -387,9 +458,15 @@ export async function handleReset(
         }
 
         // Clear the S3 bucket folder
-        const deleteS3Result = await clearS3Folder(s3Client, bucketName, "packages/");
+        const deleteS3Result = await clearS3Folder(
+            s3Client,
+            bucketName,
+            "packages/"
+        );
         if (!deleteS3Result.success) {
-            throw new Error(`Error clearing S3 folder: ${deleteS3Result.error}`);
+            throw new Error(
+                `Error clearing S3 folder: ${deleteS3Result.error}`
+            );
         }
 
         return {
@@ -451,7 +528,9 @@ export async function clearTable(
     }
 }
 
-export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<void> {
+export async function clearUserTable(
+    dynamoDb: DynamoDBDocumentClient
+): Promise<void> {
     try {
         let items;
         const defaultAdminUsername = "ece30861defaultadminuser";
@@ -477,7 +556,8 @@ export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<
                         TableName: "ECE461_UsersTable",
                         Key: { username },
                     });
-                    await dynamoDb.send(deleteCommand);0
+                    await dynamoDb.send(deleteCommand);
+                    0;
                     console.log(`Deleted user: ${username}`);
                 }
             }
@@ -488,7 +568,10 @@ export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<
     }
 }
 
-export async function getUserInfo(authToken: string, dynamoDb: DynamoDBDocumentClient) {
+export async function getUserInfo(
+    authToken: string,
+    dynamoDb: DynamoDBDocumentClient
+) {
     try {
         const token = authToken.replace("bearer ", "").trim();
         let decoded;
@@ -496,11 +579,13 @@ export async function getUserInfo(authToken: string, dynamoDb: DynamoDBDocumentC
             decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
         } catch (error) {
             if (error instanceof jwt.JsonWebTokenError) {
-            return {
-                statusCode: 403,
-                headers: corsHeaders,
-                body: JSON.stringify({ error: "Authentication failed due to invalid or malformed AuthenticationToken." }),
-            };
+                return {
+                    statusCode: 403,
+                    headers: corsHeaders,
+                    body: JSON.stringify({
+                        error: "Authentication failed due to invalid or malformed AuthenticationToken.",
+                    }),
+                };
             }
             throw error;
         }
@@ -508,17 +593,21 @@ export async function getUserInfo(authToken: string, dynamoDb: DynamoDBDocumentC
         // Verify if the decoded token contains a valid name
         if (!decoded || !decoded.name) {
             return {
-            statusCode: 403,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: "Authentication failed due to invalid or missing AuthenticationToken." }),
+                statusCode: 403,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                    error: "Authentication failed due to invalid or missing AuthenticationToken.",
+                }),
             };
         }
 
         // Fetch the user data from DynamoDB using the username
-        const result = await dynamoDb.send(new GetCommand({
-            TableName: USER_TABLE_NAME,
-            Key: { username: decoded.name },
-        }));
+        const result = await dynamoDb.send(
+            new GetCommand({
+                TableName: USER_TABLE_NAME,
+                Key: { username: decoded.name },
+            })
+        );
 
         if (!result.Item) {
             return {
