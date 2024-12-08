@@ -379,7 +379,7 @@ export async function handleReset(
             clearUserTable(dynamoDb),
             clearTable("ECE461_Database", dynamoDb, "ECEfoursixone"),
             clearTable("ECE461_CostTable", dynamoDb, "packageID"),
-            clearTable("ECE461_HistoryTable", dynamoDb, "PackageName"),
+            clearTable("ECE461_HistoryTable", dynamoDb, "PackageName", "Timestamp"),
         ]);
 
         if (clearResults.some((result: any) => result instanceof Error)) {
@@ -414,34 +414,37 @@ export async function handleReset(
 export async function clearTable(
     tableName: string,
     dynamoDb: DynamoDBDocumentClient,
-    partitionKey: string
+    partitionKeyName: string,
+    sortKeyName: string | null = null
 ): Promise<void> {
     try {
-        let items;
-        do {
-            // Scan the table for all items
-            const scanCommand = new ScanCommand({ TableName: tableName });
-            const response = await dynamoDb.send(scanCommand);
-            items = response.Items;
+        // Step 1: Retrieve all items from the table
+        const scanParams = { TableName: tableName };
+        const scanResult = await dynamoDb.send(new ScanCommand(scanParams));
 
-            if (items && items.length > 0) {
-                for (const item of items) {
-                    // Dynamically use the provided partition key
-                    const partitionKeyValue = item[partitionKey];
-                    if (!partitionKeyValue) {
-                        console.warn(`Item in table ${tableName} is missing partition key ${partitionKey}:`, item);
-                        continue;
-                    }
+        if (!scanResult.Items || scanResult.Items.length === 0) {
+            console.log(`Table ${tableName} is already empty.`);
+            return;
+        }
 
-                    const deleteCommand = new DeleteCommand({
-                        TableName: tableName,
-                        Key: { [partitionKey]: partitionKeyValue },
-                    });
-                    await dynamoDb.send(deleteCommand);
-                    console.log(`Deleted item with ${partitionKey}: ${partitionKeyValue}`);
-                }
+        // Step 2: Delete each item
+        for (const item of scanResult.Items) {
+            const deleteParams = {
+                TableName: tableName,
+                Key: {
+                    [partitionKeyName]: item[partitionKeyName],
+                },
+            };
+
+            // Add sort key if applicable
+            if (sortKeyName && item[sortKeyName]) {
+                deleteParams.Key[sortKeyName] = item[sortKeyName];
             }
-        } while (items && items.length > 0);
+
+            await dynamoDb.send(new DeleteCommand(deleteParams));
+        }
+
+        console.log(`Successfully cleared table ${tableName}.`);
     } catch (error) {
         console.error(`Error clearing table ${tableName}:`, error);
         throw error;
