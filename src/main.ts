@@ -51,19 +51,20 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
         console.log('Repository cloned at path:', repoPath);
 
         try {
-            console.log('Searching for README...');
-            const readmeStart = Date.now();
-            const readme = await findReadme(repoPath);
-            const readmeLatency = (Date.now() - readmeStart) / 1000;
-            console.log('Found README:', readme);
+            console.log('Locating README and LICENSE...');
+            const fileSearchStart = Date.now();
+            const [readme, license] = await Promise.all([
+                findReadme(repoPath),
+                findLicense(repoPath),
+            ]);
+            const fileSearchLatency = (Date.now() - fileSearchStart) / 1000;
 
-            console.log('Searching for LICENSE...');
-            const licenseStart = Date.now();
-            const license = await findLicense(repoPath, readme);
-            const licenseLatency = (Date.now() - licenseStart) / 1000;
-            console.log('Found LICENSE:', license);
+            if (!readme || !license) {
+                console.warn('README or LICENSE file missing. Skipping further calculations.');
+                return null;
+            }
 
-            console.log('Fetching data...');
+            console.log('Fetching commit and issue data...');
             const fetchStart = Date.now();
             const [uniqueContributors, issuesData] = await Promise.all([
                 fetchCommits(`${GITHUB_API_URL}/commits`, headers),
@@ -71,12 +72,7 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
             ]);
             const fetchLatency = (Date.now() - fetchStart) / 1000;
 
-            console.log('Fetched commits. Unique contributors:', uniqueContributors.length);
-
             const { openIssues, closedIssues, issueDurations } = issuesData;
-            console.log(
-                `Fetched issues. Open issues: ${openIssues}, Closed issues: ${closedIssues}, Issue durations: ${issueDurations.length}`
-            );
 
             console.log('Calculating metrics...');
             const metricsStart = Date.now();
@@ -122,11 +118,11 @@ export async function getRepoData(repoURL: string): Promise<RepoDataResult | nul
                 Correctness: correctnessValue,
                 CorrectnessLatency: correctnessLatency + fetchLatency,
                 RampUp: rampUpTimeValue,
-                RampUpLatency: rampUpTimeLatency + readmeLatency,
+                RampUpLatency: rampUpTimeLatency + fileSearchLatency,
                 ResponsiveMaintainer: responsivenessValue,
                 ResponsiveMaintainerLatency: responsivenessLatency + fetchLatency,
                 LicenseScore: licenseCompatabilityValue,
-                LicenseScoreLatency: licenseLatency + licenseLatency,
+                LicenseScoreLatency: fileSearchLatency,
                 GoodPinningPractice: dependencyPinningValue,
                 GoodPinningPracticeLatency: dependencyPinningLatency,
                 PullRequest: codeReviewValue,

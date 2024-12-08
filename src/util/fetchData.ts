@@ -63,28 +63,30 @@ export async function fetchCommits(
     let hasNextPage = true;
 
     while (hasNextPage) {
-        const batchRequests = Array.from({ length: 5 }, () =>
-            fetchWithRetry('https://api.github.com/graphql', {
+        // Use AxiosResponse to correctly type the response
+        const response: AxiosResponse<CommitHistoryResponse> = await axios.post(
+            'https://api.github.com/graphql',
+            {
                 query,
-                variables: { owner: repoInfo.owner, name: repoInfo.repo, cursor },
-            }, headers)
+                variables: {
+                    owner: repoInfo.owner,
+                    name: repoInfo.repo,
+                    cursor,
+                },
+            },
+            { headers }
         );
 
-        const responses: AxiosResponse<CommitHistoryResponse>[] = await Promise.all(batchRequests);
+        const history = response.data.data.repository.defaultBranchRef.target.history;
+        hasNextPage = history.pageInfo.hasNextPage;
+        cursor = history.pageInfo.endCursor;
 
-        for (const response of responses) {
-            const history = response.data.data.repository.defaultBranchRef.target.history;
-            history.edges.forEach((edge) => {
-                const login = edge.node.author.user?.login;
-                if (login) {
-                    uniqueContributors.set(login, (uniqueContributors.get(login) || 0) + 1);
-                }
-            });
-
-            hasNextPage = history.pageInfo.hasNextPage;
-            cursor = history.pageInfo.endCursor;
-            if (!hasNextPage) break; // Stop if we've fetched all pages
-        }
+        history.edges.forEach((edge) => {
+            const login = edge.node.author.user?.login;
+            if (login) {
+                uniqueContributors.set(login, (uniqueContributors.get(login) || 0) + 1);
+            }
+        });
     }
 
     return Array.from(uniqueContributors);
@@ -122,55 +124,37 @@ export async function fetchIssues(
     const issueDurations: number[] = [];
 
     while (hasNextPage) {
-        const batchRequests = Array.from({ length: 5 }, () =>
-            fetchWithRetry('https://api.github.com/graphql', {
+        // Use AxiosResponse to correctly type the response
+        const response: AxiosResponse<IssuesResponse> = await axios.post(
+            'https://api.github.com/graphql',
+            {
                 query,
-                variables: { owner: repoInfo.owner, name: repoInfo.repo, cursor },
-            }, headers)
+                variables: {
+                    owner: repoInfo.owner,
+                    name: repoInfo.repo,
+                    cursor,
+                },
+            },
+            { headers }
         );
 
-        const responses: AxiosResponse<IssuesResponse>[] = await Promise.all(batchRequests);
+        const issues = response.data.data.repository.issues;
+        hasNextPage = issues.pageInfo.hasNextPage;
+        cursor = issues.pageInfo.endCursor;
 
-        for (const response of responses) {
-            const issues = response.data.data.repository.issues;
-            issues.edges.forEach((edge) => {
-                if (edge.node.state === 'CLOSED') {
-                    closedIssues++;
-                    const duration =
-                        (new Date(edge.node.closedAt!).getTime() -
-                            new Date(edge.node.createdAt).getTime()) /
-                        (1000 * 3600 * 24);
-                    issueDurations.push(duration);
-                } else {
-                    openIssues++;
-                }
-            });
-
-            hasNextPage = issues.pageInfo.hasNextPage;
-            cursor = issues.pageInfo.endCursor;
-            if (!hasNextPage) break; // Stop if we've fetched all pages
-        }
+        issues.edges.forEach((edge) => {
+            if (edge.node.state === 'CLOSED') {
+                closedIssues++;
+                const duration =
+                    (new Date(edge.node.closedAt!).getTime() - new Date(edge.node.createdAt).getTime()) /
+                    (1000 * 3600 * 24);
+                issueDurations.push(duration);
+            } else {
+                openIssues++;
+            }
+        });
     }
 
     return { openIssues, closedIssues, issueDurations };
 }
 
-async function fetchWithRetry(
-    url: string,
-    options: { query: string; variables: Record<string, any> },
-    headers: { Accept: string; Authorization: string },
-    retries = 3,
-    delay = 1000
-): Promise<AxiosResponse> {
-    try {
-        return await axios.post(url, options, { headers });
-    } catch (error) {
-        if (retries > 0) {
-            console.warn(`Retrying... (${retries} retries left)`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            return fetchWithRetry(url, options, headers, retries - 1, delay * 2);
-        } else {
-            throw error;
-        }
-    }
-}

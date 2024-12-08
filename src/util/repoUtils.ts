@@ -84,7 +84,7 @@ export async function findReadme(repoPath: string) {
     return null;
 }
 
-export async function findLicense(repoPath: string, readme: string | null): Promise<string | null> {
+export async function findLicense(repoPath: string): Promise<string | null> {
     let licenseResult: string | null = null;
     const packageJsonPath = path.join(repoPath, 'package.json');
     try {
@@ -112,17 +112,6 @@ export async function findLicense(repoPath: string, readme: string | null): Prom
         }
     } catch (error) {
         console.error("Error reading LICENSE files:", error);
-    }
-    if (readme) {
-        try {
-            const readmeContent = await fs.promises.readFile(readme, 'utf8');
-            const identifiedLicense = identifyLicense(readmeContent);
-            if (identifiedLicense) {
-                licenseResult = licenseResult || identifiedLicense; 
-            }
-        } catch (error) {
-            console.error("Error reading README file:", error);
-        }
     }
     if (!licenseResult) {
         throw new Error('License information not found in LICENSE files, package.json, or README.');
