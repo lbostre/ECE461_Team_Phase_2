@@ -44,19 +44,22 @@ This project evaluates npm modules and GitHub repositories by calculating variou
 Each metric is calculated using specific criteria and contributes to the overall NetScore, aiding in the evaluation of open-source modules.
 
 ## Repository Structure
-.github/workflows/: Contains GitHub Actions workflows.
-src/: Source code files.
-.gitignore: Specifies files to be ignored by Git.
-README.md: Project documentation.
-eslint.config.js: ESLint configuration.
-index.ts: Main entry point.
-package-lock.json: Dependency tree.
-package.json: Project metadata and dependencies.
-run: Execution script.
-run.bat: Windows batch execution script.
-test_cases.txt: Test cases for evaluation.
-tsconfig.json: TypeScript configuration.
-types.ts: Type definitions.
+1. github/workflows/: Contains GitHub Actions workflows.
+2. src/: Source code files.
+3. gitignore: Specifies files to be ignored by Git.
+4. README.md: Project documentation.
+5. eslint.config.js: ESLint configuration.
+6. index.ts: Main entry point.
+7. package-lock.json: Dependency tree.
+8. package.json: Project metadata and dependencies.
+9. run: Execution script.
+10. run.bat: Windows batch execution script.
+11. test_cases.txt: Test cases for evaluation.
+12. tsconfig.json: TypeScript configuration.
+13. types.ts: Type definitions.
 
 ## License 
 This project is licensed under the GNU LGPLv2.1 License.
+
+## Acknowledgements 
+Special thanks to the ECE461 course instructors and teaching assistants for their guidance and support.
