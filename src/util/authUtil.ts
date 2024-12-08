@@ -442,8 +442,14 @@ export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<
         const defaultAdminUsername = "ece30861defaultadminuser";
 
         do {
-            // Scan the table for all items
-            const scanCommand = new ScanCommand({ TableName: "ECE461_UsersTable" });
+            // Scan the table, excluding the default admin user
+            const scanCommand = new ScanCommand({
+                TableName: "ECE461_UsersTable",
+                FilterExpression: "username <> :adminUsername",
+                ExpressionAttributeValues: {
+                    ":adminUsername": defaultAdminUsername,
+                },
+            });
             const response = await dynamoDb.send(scanCommand);
             items = response.Items;
 
@@ -451,13 +457,7 @@ export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<
                 for (const item of items) {
                     const username = item.username;
 
-                    // Skip deletion for the default admin user
-                    if (username === defaultAdminUsername) {
-                        console.log(`Skipping deletion of default admin user: ${username}`);
-                        continue;
-                    }
-
-                    // Delete all other users
+                    // Delete all non-admin users
                     const deleteCommand = new DeleteCommand({
                         TableName: "ECE461_UsersTable",
                         Key: { username },
