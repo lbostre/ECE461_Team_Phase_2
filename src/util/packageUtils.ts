@@ -205,38 +205,37 @@ export async function getRepositoryVersion(url: string): Promise<string> {
 
 export async function extractPackageJsonUrl(contentBase64: string): Promise<string | null> {
     try {
-        // Decode the base64 content
         const buffer = Buffer.from(contentBase64, 'base64');
         const zip = new AdmZip(buffer);
 
-        // Log all entries in the ZIP
         console.log("Files in ZIP:");
         const entries = zip.getEntries();
         entries.forEach((entry) => console.log(`Entry: ${entry.entryName}`));
 
-        // Normalize paths and find package.json
         const packageJsonEntry = entries.find((entry) => {
             const normalizedEntryName = entry.entryName.replace(/\\/g, '/').toLowerCase();
-            console.log(`Checking entry: ${normalizedEntryName}`);
             return normalizedEntryName.endsWith('package.json');
         });
 
-        // Log the found entry
-        if (packageJsonEntry) {
-            console.log(`Found package.json at: ${packageJsonEntry.entryName}`);
-        } else {
+        if (!packageJsonEntry) {
             console.error("package.json not found in content");
             return null;
         }
 
-        // Attempt to read the content of package.json
-        console.log(`Attempting to read package.json from: ${packageJsonEntry.entryName}`);
+        console.log(`Found package.json at: ${packageJsonEntry.entryName}`);
         const packageJsonContent = packageJsonEntry.getData().toString('utf8');
         console.log(`package.json content: ${packageJsonContent}`);
 
-        // Parse and return the repository URL
         const packageJson = JSON.parse(packageJsonContent);
-        return getRepositoryUrlFromPackageJson(packageJson);
+
+        const repoUrl = getRepositoryUrlFromPackageJson(packageJson);
+        if (!repoUrl) {
+            console.error("Failed to extract repository URL from package.json");
+            return null;
+        }
+
+        console.log("Extracted repository URL:", repoUrl);
+        return repoUrl;
     } catch (error) {
         console.error("Error processing package.json:", error);
         return null;
