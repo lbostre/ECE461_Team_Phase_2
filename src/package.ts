@@ -207,25 +207,6 @@ export async function handlePackagePost(
         if (metricsResult && metricsResult.NetScore >= 0.5) {
             if (zipBase64 || s3Url) {
                 try {
-                    const orderedMetricsResult = {
-                        BusFactor: metricsResult.BusFactor,
-                        BusFactorLatency: metricsResult.BusFactorLatency,
-                        Correctness: metricsResult.Correctness,
-                        CorrectnessLatency: metricsResult.CorrectnessLatency,
-                        RampUp: metricsResult.RampUp,
-                        RampUpLatency: metricsResult.RampUpLatency,
-                        ResponsiveMaintainer: metricsResult.ResponsiveMaintainer,
-                        ResponsiveMaintainerLatency: metricsResult.ResponsiveMaintainerLatency,
-                        LicenseScore: metricsResult.LicenseScore,
-                        LicenseScoreLatency: metricsResult.LicenseScoreLatency,
-                        GoodPinningPractice: metricsResult.GoodPinningPractice,
-                        GoodPinningPracticeLatency: metricsResult.GoodPinningPracticeLatency,
-                        PullRequest: metricsResult.PullRequest,
-                        PullRequestLatency: metricsResult.PullRequestLatency,
-                        NetScore: metricsResult.NetScore,
-                        NetScoreLatency: metricsResult.NetScoreLatency,
-                    };
-
                     const dynamoParams = {
                         TableName: TABLE_NAME,
                         Item: {
@@ -233,7 +214,7 @@ export async function handlePackagePost(
                             Version: version,
                             URL: url,
                             JSProgram: data.JSProgram,
-                            Metrics: orderedMetricsResult,
+                            Metrics: metricsResult,
                             UploadedBy: userData.username,
                             UploadedAt: currentTime,
                             Group: group,
@@ -331,9 +312,7 @@ export async function handlePackageRate(
     dynamoDbClient: DynamoDBDocumentClient
 ): Promise<APIGatewayProxyResult> {
     try {
-        console.log(
-            `Fetching metrics for package with ID: ${id} from DynamoDB`
-        );
+        console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
 
         const dynamoResult = await dynamoDbClient.send(new GetCommand({
             TableName: TABLE_NAME,
@@ -356,18 +335,36 @@ export async function handlePackageRate(
         }
 
         const metrics = dynamoResult.Item.Metrics;
-        console.log("Retrieved metrics:", metrics);
+
+        // Map the metrics to the desired order
+        const orderedMetrics = {
+            BusFactor: metrics.BusFactor,
+            BusFactorLatency: metrics.BusFactorLatency,
+            Correctness: metrics.Correctness,
+            CorrectnessLatency: metrics.CorrectnessLatency,
+            RampUp: metrics.RampUp,
+            RampUpLatency: metrics.RampUpLatency,
+            ResponsiveMaintainer: metrics.ResponsiveMaintainer,
+            ResponsiveMaintainerLatency: metrics.ResponsiveMaintainerLatency,
+            LicenseScore: metrics.LicenseScore,
+            LicenseScoreLatency: metrics.LicenseScoreLatency,
+            GoodPinningPractice: metrics.GoodPinningPractice,
+            GoodPinningPracticeLatency: metrics.GoodPinningPracticeLatency,
+            PullRequest: metrics.PullRequest,
+            PullRequestLatency: metrics.PullRequestLatency,
+            NetScore: metrics.NetScore,
+            NetScoreLatency: metrics.NetScoreLatency,
+        };
+
+        console.log("Ordered metrics:", orderedMetrics);
 
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: metrics,
+            body: JSON.stringify(orderedMetrics),
         };
     } catch (error) {
-        console.error(
-            `Error fetching metrics for package with ID ${id}:`,
-            error
-        );
+        console.error(`Error fetching metrics for package with ID ${id}:`, error);
         return {
             statusCode: 500,
             headers: corsHeaders,
