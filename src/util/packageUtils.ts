@@ -27,24 +27,23 @@ export const createPackageService = async (
     return newPackage;
 };
 
-// Function to upload content to S3
 export const uploadToS3 = async (
-    content: string,
+    content: string | Buffer, 
     fileName: string,
     s3Client: S3Client,
     bucketName: string
 ): Promise<string> => {
     const params = {
         Bucket: bucketName,
-        Key: `packages/${fileName.toLowerCase()}`, // file path in S3
-        Body: content,
-        ContentType: "application/octet-stream", // Adjust content type based on your needs
+        Key: `packages/${fileName.toLowerCase()}`,
+        Body: typeof content === "string" ? Buffer.from(content, "utf-8") : content, 
+        ContentType: "application/zip", 
     };
 
-    console.log(`Uploading file to S3: ${fileName.toLowerCase()}`);
+    console.log(`Uploading ZIP file to S3: ${fileName.toLowerCase()}`);
     const command = new PutObjectCommand(params);
-    const data = await s3Client.send(command);
-    console.log(`File uploaded successfully.`);
+    await s3Client.send(command);
+    console.log(`ZIP file uploaded successfully.`);
     return `https://${bucketName}.s3.amazonaws.com/packages/${fileName.toLowerCase()}`;
 };
 
@@ -87,11 +86,34 @@ export const streamToBuffer = async (stream: ReadableStream | Blob | Readable | 
     if (!stream) {
         throw new Error("Stream is null or undefined");
     }
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-        chunks.push(chunk);
+
+    // Handle Node.js Readable streams
+    if (typeof stream === "object" && "readable" in stream && typeof (stream as Readable).read === "function") {
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+            chunks.push(chunk);
+        }
+        return Buffer.concat(chunks);
     }
-    return Buffer.concat(chunks);
+
+    // Handle browser ReadableStream
+    if (stream instanceof ReadableStream) {
+        const reader = stream.getReader();
+        const chunks: Uint8Array[] = [];
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) chunks.push(value);
+        }
+        return Buffer.concat(chunks);
+    }
+
+    // Handle Blob (browser-specific)
+    if (stream instanceof Blob) {
+        return Buffer.from(await stream.arrayBuffer());
+    }
+
+    throw new Error("Unsupported stream type");
 };
 
 export async function uploadGithubRepoAsZipToS3(
@@ -136,15 +158,15 @@ export async function uploadGithubRepoAsZipToS3(
         );
 
         // Convert the downloaded zip file to a base64 string
-        const zipBase64 = Buffer.from(response.data).toString("base64");
-        console.log(`Converted zip file to base64 format.`);
+        //const zipBase64 = Buffer.from(response.data).toString("base64");
+        //console.log(`Converted zip file to base64 format.`);
 
         // Upload the base64 string to S3
         const params = {
             Bucket: bucketName,
             Key: `packages/${fileName.toLowerCase()}`, // file path in S3
-            Body: zipBase64,
-            ContentType: "application/octet-stream", // Adjust content type based on your needs
+            Body: response.data,
+            ContentType: "application/zip", // Adjust content type based on your needs
         };
 
         console.log(`Uploading file to S3: ${fileName}`);
@@ -152,7 +174,7 @@ export async function uploadGithubRepoAsZipToS3(
         await s3Client.send(command);
         console.log(`File uploaded successfully.`);
 
-        return zipBase64; // Return the uploaded file URL
+        return `https://${bucketName}.s3.amazonaws.com/packages/${fileName.toLowerCase()}`; // Return the uploaded file URL
     } catch (error) {
         console.error(
             "Error during uploadGithubRepoAsZipToS3 execution:",
