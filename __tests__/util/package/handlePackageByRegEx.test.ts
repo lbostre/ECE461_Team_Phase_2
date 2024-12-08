@@ -37,6 +37,11 @@ describe('handlePackageByRegEx', () => {
       Version: '1.3.3',
       URL: 'https://github.com/jashkenas/underscore',
     },
+    {
+      ECEfoursixone: 'repo',
+      Version: '1.3.4',
+      URL: 'https://github.com/user/repo',
+    },
   ];
 
   const mockResponse = {
@@ -129,4 +134,54 @@ describe('handlePackageByRegEx', () => {
     const responseBody = JSON.parse(result.body);
     expect(responseBody.error).toBe('Internal Server Error');
   });
+
+  // Bonus RegEx tests
+  // it('should return 404 if no package is found under the regex "ece461rules"', async () => {
+  //   ddbMock.on(ScanCommand).resolves(mockResponse);
+  //   vi.mocked(fetchReadmesBatch).mockResolvedValue({
+  //     'https://github.com/jashkenas/underscore': 'Underscore README content',
+  //   });
+
+  //   // Use regex that matches no packages
+  //   const noMatchRegex = JSON.stringify({ RegEx: 'ece461rules' });
+
+  //   const result = await handlePackageByRegEx(noMatchRegex, ddbMock as unknown as DynamoDBDocumentClient);
+
+  //   expect(result.statusCode).toBe(404);
+  //   const responseBody = JSON.parse(result.body);
+  //   expect(responseBody.error).toBe('No package found under this regex.');
+  // });
+
+  // it('should return 400 for the regex "(a{1,99999}){1,99999}$"', async () => {
+  //   ddbMock.on(ScanCommand).resolves(mockResponse);
+  //   vi.mocked(fetchReadmesBatch).mockResolvedValue({
+  //     'https://github.com/jashkenas/underscore': 'Underscore README content',
+  //   });
+
+  //   // Use regex that matches no packages
+  //   const noMatchRegex = JSON.stringify({ RegEx: '(a{1,99999}){1,99999}$' });
+
+  //   const result = await handlePackageByRegEx(noMatchRegex, ddbMock as unknown as DynamoDBDocumentClient);
+
+  //   expect(result.statusCode).toBe(400);
+  //   const responseBody = JSON.parse(result.body);
+  //   expect(responseBody.error).toBe('No package found under this regex.');
+  // });
+
+  // it('should return 404 for the regex "(a|aa)*$"', async () => {
+  //   ddbMock.on(ScanCommand).resolves(mockResponse);
+  //   vi.mocked(fetchReadmesBatch).mockResolvedValue({
+  //     'https://github.com/jashkenas/underscore': 'Underscore REDME content',
+  //   });
+
+  //   // Use regex that matches no packages
+  //   const noMatchRegex = JSON.stringify({ RegEx: '(a|aa)*$' });
+
+  //   const result = await handlePackageByRegEx(noMatchRegex, ddbMock as unknown as DynamoDBDocumentClient);
+  //   console.log(result);
+
+  //   expect(result.statusCode).toBe(404);
+  //   const responseBody = JSON.parse(result.body);
+  //   expect(responseBody.error).toBe('No package found under this regex.');
+  // });
 });
