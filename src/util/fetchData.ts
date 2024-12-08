@@ -44,10 +44,18 @@ export async function fetchCommits(
     let page = 1;
     let keepFetching = true;
 
+    // Calculate the date 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const since = sixMonthsAgo.toISOString(); // Convert to ISO 8601 format
+
     while (keepFetching) {
         const responses = await Promise.all(
             Array.from({ length: maxParallelRequests }, (_, i) =>
-                axios.get(`${correctedUrl}?page=${page + i}&per_page=${pageSize}`, { headers })
+                axios.get(
+                    `${correctedUrl}?page=${page + i}&per_page=${pageSize}&since=${since}`,
+                    { headers }
+                )
             )
         );
 
@@ -85,12 +93,18 @@ export async function fetchIssues(
 
     let keepFetching = true;
 
+    // Calculate the date 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const since = sixMonthsAgo.toISOString(); // Convert to ISO 8601 format
+
     while (keepFetching) {
         const responses = await Promise.all(
             Array.from({ length: maxParallelRequests }, (_, i) =>
-                axios.get(`${correctedUrl}?page=${page + i}&per_page=${pageSize}&state=all`, {
-                    headers,
-                })
+                axios.get(
+                    `${correctedUrl}?page=${page + i}&per_page=${pageSize}&state=all&since=${since}`,
+                    { headers }
+                )
             )
         );
 
