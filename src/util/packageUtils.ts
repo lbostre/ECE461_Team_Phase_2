@@ -210,8 +210,8 @@ export async function extractPackageJsonUrl(contentBase64: string): Promise<stri
     // Step 2: Load the content into a zip extractor
     const zip = new AdmZip(buffer);
 
-    // Step 3: Search for package.json file
-    const packageJsonEntry = zip.getEntry('package.json');
+    // Step 3: Search for package.json file (recursively)
+    const packageJsonEntry = zip.getEntries().find((entry) => entry.entryName.endsWith('/package.json') || entry.entryName === 'package.json');
     if (!packageJsonEntry) {
         console.error("package.json not found in content");
         return null;
