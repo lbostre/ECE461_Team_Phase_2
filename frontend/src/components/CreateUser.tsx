@@ -188,43 +188,52 @@ export default function CreateUser() {
                     <div className="w-full">
                         <FormLabel>Permissions</FormLabel>
                         <div className="flex flex-row gap-6 mt-2">
-                            {["upload", "search", "download"].map((perm) => (
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
+                            {["upload", "search", "download"].map((perm) => {
+                                const id = `permission-${perm}`;
+                                return (
+                                    <div
+                                        className="flex items-center space-x-2"
                                         key={perm}
-                                        checked={
-                                            form
-                                                .watch("permissions")
-                                                ?.includes(perm) || false
-                                        }
-                                        onCheckedChange={(checked) => {
-                                            const currentPermissions =
-                                                form.watch("permissions") || [];
-                                            if (checked) {
-                                                form.setValue("permissions", [
-                                                    ...currentPermissions,
-                                                    perm,
-                                                ]);
-                                            } else {
-                                                form.setValue(
-                                                    "permissions",
-                                                    currentPermissions.filter(
-                                                        (p) => p !== perm
-                                                    )
-                                                );
+                                    >
+                                        <Checkbox
+                                            id={id} // Ensure the Checkbox has this ID
+                                            checked={
+                                                form
+                                                    .watch("permissions")
+                                                    ?.includes(perm) || false
                                             }
-                                        }}
-                                    >
-                                        {perm}
-                                    </Checkbox>
-                                    <label
-                                        htmlFor="terms"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                        {perm}
-                                    </label>
-                                </div>
-                            ))}
+                                            onCheckedChange={(checked) => {
+                                                const currentPermissions =
+                                                    form.watch("permissions") ||
+                                                    [];
+                                                if (checked) {
+                                                    form.setValue(
+                                                        "permissions",
+                                                        [
+                                                            ...currentPermissions,
+                                                            perm,
+                                                        ]
+                                                    );
+                                                } else {
+                                                    form.setValue(
+                                                        "permissions",
+                                                        currentPermissions.filter(
+                                                            (p: string) =>
+                                                                p !== perm
+                                                        )
+                                                    );
+                                                }
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor={id} // Correctly link this label to the Checkbox
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            {perm}
+                                        </label>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <FormMessage />
                     </div>
