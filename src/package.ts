@@ -755,6 +755,25 @@ export const handlePackagesList = async (
             // If Name is '*', return all packages in the database
             const allPackages = await getAllPackages(dynamoDb);
             results.push(...allPackages);
+        } else if (query.Name && !query.Version) {
+            try {
+                const params = {
+                    TableName: "ECE461_Database",
+                };
+
+                const command = new ScanCommand(params);
+                const response = await dynamoDb.send(command);
+
+                const items = response.Items || [];
+                const matchingPackages = items.filter((item: any) => {
+                    const packageName = item.packageID.replace(/\d+$/, ""); 
+                    return packageName === query.Name;
+                });
+
+                results.push(...matchingPackages);
+            } catch (error) {
+                console.error("Error scanning table for package name:", error);
+            }
         } else if (query.Version && query.Name) {
             // Handle different version queries: Exact, Bounded Range, Carat, Tilde
             if (query.Version.toLowerCase().includes("exact".toLowerCase())) {
