@@ -131,6 +131,7 @@ export default function Package() {
 
     const handleDownload = () => {
         if (packageData?.data.Content) {
+            console.log(JSON.stringify(packageData.data.Content));
             downloadFile(packageData.data.Content, packageData.metadata.Name);
         } else {
             console.error("Content is undefined");
@@ -177,7 +178,7 @@ export default function Package() {
                     </div>
                 )}
                 <div className="flex flex-row gap-2">
-                    <DeletePackageButton packageID={name || ""} />
+                    {/* <DeletePackageButton packageID={name || ""} /> */}
                     {packageData && (
                         <UpdatePackageButton
                             packageID={name || ""}
