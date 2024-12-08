@@ -21,7 +21,14 @@ import {
 import { getGroups, getUserInfo } from "./util/authUtil.js";
 import { getGithubUrlFromNpm } from "./util/repoUtils.js";
 import { getRepoData } from "./main.js";
-import { PutCommand, GetCommand, DynamoDBDocumentClient, ScanCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+    PutCommand,
+    GetCommand,
+    DynamoDBDocumentClient,
+    ScanCommand,
+    QueryCommand,
+    DeleteCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import semver from "semver";
 
@@ -101,11 +108,18 @@ export async function handlePackagePost(
                     const URL = await extractPackageJsonUrl(data.Content);
                     version = await extractVersionFromPackageJson(data.Content);
                     name = `${data.Name}`;
-                    const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
-                    const existingPackage = await dynamoDb.send(new GetCommand({
-                        TableName: TABLE_NAME,
-                        Key: { ECEfoursixone: fileName.replace('.zip', '') }
-                    }));
+                    const fileName = `${data.Name}${version.replace(
+                        /\./g,
+                        ""
+                    )}.zip`;
+                    const existingPackage = await dynamoDb.send(
+                        new GetCommand({
+                            TableName: TABLE_NAME,
+                            Key: {
+                                ECEfoursixone: fileName.replace(".zip", ""),
+                            },
+                        })
+                    );
                     if (existingPackage.Item) {
                         return {
                             statusCode: 409,
@@ -118,17 +132,20 @@ export async function handlePackagePost(
                     if (URL != null) {
                         metricsResult = await getRepoData(URL);
                         if (metricsResult && metricsResult.NetScore >= 0.5) {
-                            s3Url = await uploadToS3(contentToUpload, fileName, s3Client, BUCKET_NAME);
+                            s3Url = await uploadToS3(
+                                contentToUpload,
+                                fileName,
+                                s3Client,
+                                BUCKET_NAME
+                            );
                             url = URL;
-                            version = await extractVersionFromPackageJson(data.Content);
+                            version = await extractVersionFromPackageJson(
+                                data.Content
+                            );
                         } else {
                             return {
                                 statusCode: 424,
-                                headers: {
-                                    "Access-Control-Allow-Origin": "*",
-                                    "Access-Control-Allow-Methods": "POST",
-                                    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-                                },
+                                headers: corsHeaders,
                                 body: JSON.stringify({
                                     error: "Package is not uploaded due to the disqualified rating.",
                                 }),
@@ -137,18 +154,29 @@ export async function handlePackagePost(
                     }
                 } else if (data.URL) {
                     let githubURL = data.URL;
-                    if (/^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(githubURL)) {
+                    if (
+                        /^(npm:|https?:\/\/(www\.)?npmjs\.com\/)/.test(
+                            githubURL
+                        )
+                    ) {
                         githubURL = await getGithubUrlFromNpm(githubURL);
                         version = await getRepositoryVersion(githubURL);
                     } else {
                         version = await getRepositoryVersion(data.URL);
                     }
                     name = `${data.Name}`;
-                    const fileName = `${data.Name}${version.replace(/\./g, "")}.zip`;
-                    const existingPackage = await dynamoDb.send(new GetCommand({
-                        TableName: TABLE_NAME,
-                        Key: { ECEfoursixone: fileName.replace('.zip', '') }
-                    }));
+                    const fileName = `${data.Name}${version.replace(
+                        /\./g,
+                        ""
+                    )}.zip`;
+                    const existingPackage = await dynamoDb.send(
+                        new GetCommand({
+                            TableName: TABLE_NAME,
+                            Key: {
+                                ECEfoursixone: fileName.replace(".zip", ""),
+                            },
+                        })
+                    );
                     if (existingPackage.Item) {
                         return {
                             statusCode: 409,
@@ -160,7 +188,12 @@ export async function handlePackagePost(
                     }
                     metricsResult = await getRepoData(githubURL);
                     if (metricsResult && metricsResult.NetScore >= 0.5) {
-                        zipBase64 = await uploadGithubRepoAsZipToS3(githubURL, fileName, s3Client, BUCKET_NAME);
+                        zipBase64 = await uploadGithubRepoAsZipToS3(
+                            githubURL,
+                            fileName,
+                            s3Client,
+                            BUCKET_NAME
+                        );
                         url = githubURL;
                     } else {
                         return {
@@ -173,8 +206,13 @@ export async function handlePackagePost(
                     }
                 }
             } catch (uploadError) {
-                console.error("Upload to S3 or GitHub processing failed:", uploadError);
-                throw new Error("Failed to upload content to S3 or process GitHub repo");
+                console.error(
+                    "Upload to S3 or GitHub processing failed:",
+                    uploadError
+                );
+                throw new Error(
+                    "Failed to upload content to S3 or process GitHub repo"
+                );
             }
         }
         const { debloat, ...dataWithoutDebloat } = data;
@@ -197,7 +235,10 @@ export async function handlePackagePost(
             if (!group) {
                 return {
                     statusCode: 403,
-                    body: JSON.stringify({ error: "User group could not be retrieved" }),
+                    headers: corsHeaders,
+                    body: JSON.stringify({
+                        error: "User group could not be retrieved",
+                    }),
                 };
             }
         }
@@ -225,7 +266,10 @@ export async function handlePackagePost(
                         headers: corsHeaders,
                         body: JSON.stringify({
                             error: "Failed to store metrics in DynamoDB",
-                            details: error instanceof Error ? error.message : String(error),
+                            details:
+                                error instanceof Error
+                                    ? error.message
+                                    : String(error),
                         }),
                     };
                 }
@@ -233,11 +277,17 @@ export async function handlePackagePost(
         }
 
         try {
-            console.log(`Updating history for deleted package: ${result.metadata.ID}`);
+            console.log(
+                `Updating history for deleted package: ${result.metadata.ID}`
+            );
             await updateHistory(
                 dynamoDb,
                 authToken,
-                { Name: name.replace(/\d+$/, ""), Version: version, ID: result.metadata.ID },
+                {
+                    Name: name.replace(/\d+$/, ""),
+                    Version: version,
+                    ID: result.metadata.ID,
+                },
                 "CREATE"
             );
             console.log("History updated successfully.");
@@ -254,11 +304,7 @@ export async function handlePackagePost(
 
         return {
             statusCode: 201,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST",
-                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-            },
+            headers: corsHeaders,
             body: JSON.stringify(result),
         };
     } catch (error) {
@@ -266,17 +312,15 @@ export async function handlePackagePost(
             return {
                 statusCode: 400,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+                body: JSON.stringify({
+                    error: "Invalid JSON in request body.",
+                }),
             };
         }
         console.error("Error processing request:", error);
         return {
             statusCode: 500,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST",
-                "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-            },
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "An error occurred while processing the request",
                 details: error instanceof Error ? error.message : String(error),
@@ -295,7 +339,13 @@ export async function handlePackageGet(
     console.log(`Handling GET request for package with ID: ${id}`);
 
     try {
-        const packageData = await fetchPackageById(id, dynamoDb, s3Client, bucketName, authToken);
+        const packageData = await fetchPackageById(
+            id,
+            dynamoDb,
+            s3Client,
+            bucketName,
+            authToken
+        );
 
         if (!packageData) {
             console.warn(`Package with ID ${id} not found.`);
@@ -312,7 +362,11 @@ export async function handlePackageGet(
                 await updateHistory(
                     dynamoDb,
                     authToken,
-                    { Name: packageData.metadata.Name, Version: packageData.metadata.Version, ID: id },
+                    {
+                        Name: packageData.metadata.Name,
+                        Version: packageData.metadata.Version,
+                        ID: id,
+                    },
                     "DOWNLOAD"
                 );
                 console.log("History updated successfully.");
@@ -350,12 +404,16 @@ export async function handlePackageRate(
     authToken: string
 ): Promise<APIGatewayProxyResult> {
     try {
-        console.log(`Fetching metrics for package with ID: ${id} from DynamoDB`);
+        console.log(
+            `Fetching metrics for package with ID: ${id} from DynamoDB`
+        );
 
-        const dynamoResult = await dynamoDbClient.send(new GetCommand({
-            TableName: TABLE_NAME,
-            Key: { ECEfoursixone: id }
-        }));
+        const dynamoResult = await dynamoDbClient.send(
+            new GetCommand({
+                TableName: TABLE_NAME,
+                Key: { ECEfoursixone: id },
+            })
+        );
 
         if (!dynamoResult.Item) {
             console.warn(`No metrics found for package with ID: ${id}`);
@@ -398,7 +456,11 @@ export async function handlePackageRate(
                 await updateHistory(
                     dynamoDbClient,
                     authToken,
-                    { Name: id.replace(/\d+$/, ""), Version: dynamoResult.Item.Version, ID: id },
+                    {
+                        Name: id.replace(/\d+$/, ""),
+                        Version: dynamoResult.Item.Version,
+                        ID: id,
+                    },
                     "RATE"
                 );
                 console.log("History updated successfully.");
@@ -420,7 +482,10 @@ export async function handlePackageRate(
             body: JSON.stringify(orderedMetrics),
         };
     } catch (error) {
-        console.error(`Error fetching metrics for package with ID ${id}:`, error);
+        console.error(
+            `Error fetching metrics for package with ID ${id}:`,
+            error
+        );
         return {
             statusCode: 500,
             headers: corsHeaders,
@@ -438,10 +503,12 @@ export async function handlePackageCost(
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if cost data exists in the Cost Table
-        const costData = await dynamoDbClient.send(new GetCommand({
-            TableName: COST_TABLE_NAME,
-            Key: { packageID: id },
-        }));
+        const costData = await dynamoDbClient.send(
+            new GetCommand({
+                TableName: COST_TABLE_NAME,
+                Key: { packageID: id },
+            })
+        );
 
         if (costData.Item) {
             const { standaloneCost, totalCost } = costData.Item;
@@ -457,10 +524,12 @@ export async function handlePackageCost(
         }
 
         // Fetch package data from the main table
-        const packageData = await dynamoDbClient.send(new GetCommand({
-            TableName: "ECE461_Database",
-            Key: { ECEfoursixone: id },
-        }));
+        const packageData = await dynamoDbClient.send(
+            new GetCommand({
+                TableName: "ECE461_Database",
+                Key: { ECEfoursixone: id },
+            })
+        );
 
         if (!packageData.Item) {
             return {
@@ -485,25 +554,29 @@ export async function handlePackageCost(
             await fetchCostWithGraphQL(repoUrl, includeDependencies);
 
         // Write the package's cost data to the database
-        await dynamoDbClient.send(new PutCommand({
-            TableName: "ECE461_CostTable",
-            Item: {
-                packageID: id,
-                standaloneCost,
-                totalCost,
-            },
-        }));
+        await dynamoDbClient.send(
+            new PutCommand({
+                TableName: "ECE461_CostTable",
+                Item: {
+                    packageID: id,
+                    standaloneCost,
+                    totalCost,
+                },
+            })
+        );
 
         // Write dependency costs to the database
         for (const [dependencyId, costData] of Object.entries(dependencies)) {
-            await dynamoDbClient.send(new PutCommand({
-                TableName: "ECE461_CostTable",
-                Item: {
-                    packageID: dependencyId,
-                    standaloneCost: costData.standaloneCost,
-                    totalCost: costData.totalCost,
-                },
-            }));
+            await dynamoDbClient.send(
+                new PutCommand({
+                    TableName: "ECE461_CostTable",
+                    Item: {
+                        packageID: dependencyId,
+                        standaloneCost: costData.standaloneCost,
+                        totalCost: costData.totalCost,
+                    },
+                })
+            );
         }
 
         // Construct the response
@@ -552,7 +625,9 @@ export async function handlePackageUpdate(
             return {
                 statusCode: 400,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+                body: JSON.stringify({
+                    error: "Invalid JSON in request body.",
+                }),
             };
         }
         const { metadata, data, Secret } = requestBody;
@@ -619,7 +694,9 @@ export async function handlePackageUpdate(
                 return {
                     statusCode: 403,
                     headers: corsHeaders,
-                    body: JSON.stringify({ error: "User group could not be retrieved" }),
+                    body: JSON.stringify({
+                        error: "User group could not be retrieved",
+                    }),
                 };
             }
         }
@@ -627,12 +704,20 @@ export async function handlePackageUpdate(
         // Run metrics and upload the package to S3
         if (contentToUpload || data.URL) {
             try {
-                const url = data.URL || (await extractPackageJsonUrl(contentToUpload));
+                const url =
+                    data.URL || (await extractPackageJsonUrl(contentToUpload));
                 const metrics = await getRepoData(url);
 
                 if (metrics && metrics.NetScore >= 0.5) {
-                    const fileName = `${metadata.Name}${metadata.Version.replace(/\./g, "")}.zip`;
-                    s3Url = await uploadToS3(contentToUpload, fileName, s3Client, BUCKET_NAME);
+                    const fileName = `${
+                        metadata.Name
+                    }${metadata.Version.replace(/\./g, "")}.zip`;
+                    s3Url = await uploadToS3(
+                        contentToUpload,
+                        fileName,
+                        s3Client,
+                        BUCKET_NAME
+                    );
                     metricsResult = metrics;
                 } else {
                     return {
@@ -644,7 +729,10 @@ export async function handlePackageUpdate(
                     };
                 }
             } catch (error) {
-                console.error("Error processing metrics or uploading to S3:", error);
+                console.error(
+                    "Error processing metrics or uploading to S3:",
+                    error
+                );
                 return {
                     statusCode: 500,
                     headers: corsHeaders,
@@ -677,7 +765,11 @@ export async function handlePackageUpdate(
             await updateHistory(
                 dynamoDb,
                 authToken,
-                { Name: id.replace(/\d+$/, ""), Version: metadata.Version, ID: id },
+                {
+                    Name: id.replace(/\d+$/, ""),
+                    Version: metadata.Version,
+                    ID: id,
+                },
                 "UPDATE"
             );
             console.log("History updated successfully.");
@@ -751,7 +843,7 @@ export const handlePackagesList = async (
 
     // Iterate over each query to collect results
     for (const query of packagesQuery) {
-        if (query.Name === '*') {
+        if (query.Name === "*") {
             // If Name is '*', return all packages in the database
             const allPackages = await getAllPackages(dynamoDb);
             results.push(...allPackages);
@@ -760,16 +852,19 @@ export const handlePackagesList = async (
                 const params = {
                     TableName: "ECE461_Database",
                 };
-        
+
                 const command = new ScanCommand(params);
                 const response = await dynamoDb.send(command);
-        
+
                 const items = response.Items || [];
-                
+
                 // Filter items matching the provided name and map to expected structure
                 const matchingPackages = items
                     .filter((item: any) => {
-                        const packageName = item.ECEfoursixone.replace(/\d.*/, ""); // Extract name from packageID
+                        const packageName = item.ECEfoursixone.replace(
+                            /\d.*/,
+                            ""
+                        ); // Extract name from packageID
                         return packageName === query.Name.toLowerCase();
                     })
                     .map((item: any) => ({
@@ -777,7 +872,7 @@ export const handlePackagesList = async (
                         Name: query.Name,
                         ID: item.ECEfoursixone,
                     }));
-        
+
                 results.push(...matchingPackages);
             } catch (error) {
                 console.error("Error scanning table for package name:", error);
@@ -787,27 +882,56 @@ export const handlePackagesList = async (
             if (query.Version.toLowerCase().includes("exact".toLowerCase())) {
                 const version = query.Version.match(/\(([^)]+)\)/)?.[1];
                 if (version) {
-                    const exactPackage = await getExactPackage(query.Name, version, dynamoDb);
+                    const exactPackage = await getExactPackage(
+                        query.Name,
+                        version,
+                        dynamoDb
+                    );
                     if (exactPackage) {
                         results.push(exactPackage);
                     }
                 }
-            } else if (query.Version.toLowerCase().includes("bounded range".toLowerCase())) {
-                const range = query.Version.match(/\(([^)]+)\)/)?.[1]?.split("-");
+            } else if (
+                query.Version.toLowerCase().includes(
+                    "bounded range".toLowerCase()
+                )
+            ) {
+                const range =
+                    query.Version.match(/\(([^)]+)\)/)?.[1]?.split("-");
                 if (range && range.length === 2) {
-                    const boundedPackages = await getBoundedRangePackages(query.Name, range, dynamoDb);
+                    const boundedPackages = await getBoundedRangePackages(
+                        query.Name,
+                        range,
+                        dynamoDb
+                    );
                     results.push(...boundedPackages);
                 }
-            } else if (query.Version.toLowerCase().includes("carat".toLowerCase())) {
-                const version = query.Version.match(/\(([^)]+)\)/)?.[1]?.replace(/^\^+/, ""); 
+            } else if (
+                query.Version.toLowerCase().includes("carat".toLowerCase())
+            ) {
+                const version = query.Version.match(
+                    /\(([^)]+)\)/
+                )?.[1]?.replace(/^\^+/, "");
                 if (version) {
-                    const caratPackages = await getCaratPackages(query.Name, version, dynamoDb);
+                    const caratPackages = await getCaratPackages(
+                        query.Name,
+                        version,
+                        dynamoDb
+                    );
                     results.push(...caratPackages);
                 }
-            } else if (query.Version.toLowerCase().includes("tilde".toLowerCase())) {
-                const version = query.Version.match(/\(([^)]+)\)/)?.[1]?.replace(/^~+/, ""); 
+            } else if (
+                query.Version.toLowerCase().includes("tilde".toLowerCase())
+            ) {
+                const version = query.Version.match(
+                    /\(([^)]+)\)/
+                )?.[1]?.replace(/^~+/, "");
                 if (version) {
-                    const tildePackages = await getTildePackages(query.Name, version, dynamoDb);
+                    const tildePackages = await getTildePackages(
+                        query.Name,
+                        version,
+                        dynamoDb
+                    );
                     results.push(...tildePackages);
                 }
             }
@@ -817,10 +941,12 @@ export const handlePackagesList = async (
     }
 
     // Removing duplicate packages from the results
-    results = results.filter((item, index, self) =>
-        index === self.findIndex((t) => (
-            t.ID === item.ID && t.Version === item.Version
-        ))
+    results = results.filter(
+        (item, index, self) =>
+            index ===
+            self.findIndex(
+                (t) => t.ID === item.ID && t.Version === item.Version
+            )
     );
 
     // Pagination logic
@@ -833,7 +959,10 @@ export const handlePackagesList = async (
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
-            "offset": offset + pageSize < results.length ? (offset + pageSize).toString() : "0",
+            offset:
+                offset + pageSize < results.length
+                    ? (offset + pageSize).toString()
+                    : "0",
         },
         body: JSON.stringify(paginatedResults),
     };
@@ -861,7 +990,9 @@ export async function handlePackageByRegEx(
             return {
                 statusCode: 400,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Invalid JSON in request body." }),
+                body: JSON.stringify({
+                    error: "Invalid JSON in request body.",
+                }),
             };
         }
 
@@ -912,15 +1043,18 @@ export async function handlePackageByRegEx(
 
         const results = items
             .filter((item: any) => {
-                const packageNameWithVersion = item.ECEfoursixone; 
+                const packageNameWithVersion = item.ECEfoursixone;
                 const githubUrl = item.URL;
                 const readmeText = readmeContent[githubUrl] || "";
-                const packageName = packageNameWithVersion.replace(/\d+$/, ""); 
-                return regexPattern.test(packageName) || regexPattern.test(readmeText);
+                const packageName = packageNameWithVersion.replace(/\d+$/, "");
+                return (
+                    regexPattern.test(packageName) ||
+                    regexPattern.test(readmeText)
+                );
             })
             .map((item: any) => {
                 const packageNameWithVersion = item.ECEfoursixone;
-                const packageName = packageNameWithVersion.replace(/\d+$/, ""); 
+                const packageName = packageNameWithVersion.replace(/\d+$/, "");
                 return {
                     Version: item.Version,
                     Name: packageName,
@@ -933,7 +1067,9 @@ export async function handlePackageByRegEx(
             return {
                 statusCode: 404,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "No package found under this regex." }),
+                body: JSON.stringify({
+                    error: "No package found under this regex.",
+                }),
             };
         }
 
@@ -1036,7 +1172,9 @@ export async function handlePackageDelete(
             return {
                 statusCode: 403,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Unauthorized or invalid token." }),
+                body: JSON.stringify({
+                    error: "Unauthorized or invalid token.",
+                }),
             };
         }
 
@@ -1075,7 +1213,9 @@ export async function handlePackageDelete(
             return {
                 statusCode: 500,
                 headers: corsHeaders,
-                body: JSON.stringify({ error: "Failed to delete file from S3." }),
+                body: JSON.stringify({
+                    error: "Failed to delete file from S3.",
+                }),
             };
         }
 
@@ -1138,4 +1278,3 @@ export async function handlePackageDelete(
         };
     }
 }
-
