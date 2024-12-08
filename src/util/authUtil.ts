@@ -372,7 +372,7 @@ export async function handleReset(
 
         // Clear tables and handle errors
         const clear_results = await Promise.all([
-            clearTable("ECE461_UsersTable", dynamoDb),
+            clearUserTable(dynamoDb),
             clearTable("ECE461_PackagesTable", dynamoDb),
             clearTable("ECE461_CostsTable", dynamoDb),
         ]);
@@ -380,24 +380,10 @@ export async function handleReset(
             throw new Error("Error clearing tables.");
         }
 
-        const defaultAdmin = {
-            username: "ece30861defaultadminuser",
-            password: "correcthorsebatterystaple123(!__+@**(A'\"`;DROP TABLE packages;",
-            isAdmin: true,
-            permissions: ["search", "upload", "download"],
-            callCount: 0,
-            expiresAt: Math.floor(Date.now() / 1000) + 10 * 60 * 60, 
-        };
-
-        await dynamoDb.send(new PutCommand({
-            TableName: "ECE461_UsersTable",
-            Item: defaultAdmin,
-        }));
-
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify({ message: "Registry is reset." }),
+            body: "Registry is reset.",
         };
     } catch (error) {
         console.error("Error resetting the registry:", error);
@@ -433,6 +419,43 @@ export async function clearTable(tableName: string, dynamoDb: DynamoDBDocumentCl
         } while (items && items.length > 0);
     } catch (error) {
         console.error(`Error clearing table ${tableName}:`, error);
+        throw error;
+    }
+}
+
+export async function clearUserTable(dynamoDb: DynamoDBDocumentClient): Promise<void> {
+    try {
+        let items;
+        const defaultAdminUsername = "ece30861defaultadminuser";
+
+        do {
+            // Scan the table for all items
+            const scanCommand = new ScanCommand({ TableName: "ECE461_UsersTable" });
+            const response = await dynamoDb.send(scanCommand);
+            items = response.Items;
+
+            if (items && items.length > 0) {
+                for (const item of items) {
+                    const username = item.username;
+
+                    // Skip deletion for the default admin user
+                    if (username === defaultAdminUsername) {
+                        console.log(`Skipping deletion of default admin user: ${username}`);
+                        continue;
+                    }
+
+                    // Delete all other users
+                    const deleteCommand = new DeleteCommand({
+                        TableName: "ECE461_UsersTable",
+                        Key: { username },
+                    });
+                    await dynamoDb.send(deleteCommand);
+                    console.log(`Deleted user: ${username}`);
+                }
+            }
+        } while (items && items.length > 0);
+    } catch (error) {
+        console.error("Error clearing user table:", error);
         throw error;
     }
 }
