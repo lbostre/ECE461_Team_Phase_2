@@ -2,6 +2,8 @@ import { APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import jwt from "jsonwebtoken";
 import { AuthenticationRequest } from "../../types.js";
+import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { clearS3Folder } from "./packageUtils.js";
 
 const USER_TABLE_NAME = "ECE461_UsersTable";
 const JWT_SECRET = process.env.JWT_SECRET || "XH8HurGXsbnbCXT/LxJ3MlhIQKfEFeshJTKg2T/DWgw=";
@@ -357,7 +359,9 @@ export async function getGroups(
 
 export async function handleReset(
     authToken: string,
-    dynamoDb: DynamoDBDocumentClient
+    dynamoDb: DynamoDBDocumentClient,
+    s3Client: S3Client,
+    bucketName: string
 ): Promise<APIGatewayProxyResult> {
     try {
         // Check if the user is an admin
@@ -370,14 +374,21 @@ export async function handleReset(
             };
         }
 
-        // Clear tables and handle errors
-        const clear_results = await Promise.all([
+        // Clear DynamoDB tables
+        const clearResults = await Promise.all([
             clearUserTable(dynamoDb),
             clearTable("ECE461_Database", dynamoDb, "ECEfoursixone"),
             clearTable("ECE461_CostTable", dynamoDb, "packageID"),
         ]);
-        if (clear_results.some((result: any) => result instanceof Error)) {
-            throw new Error("Error clearing tables.");
+
+        if (clearResults.some((result: any) => result instanceof Error)) {
+            throw new Error("Error clearing DynamoDB tables.");
+        }
+
+        // Clear the S3 bucket folder
+        const deleteS3Result = await clearS3Folder(s3Client, bucketName, "packages/");
+        if (!deleteS3Result.success) {
+            throw new Error(`Error clearing S3 folder: ${deleteS3Result.error}`);
         }
 
         return {

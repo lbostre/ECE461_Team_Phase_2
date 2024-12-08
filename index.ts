@@ -259,7 +259,7 @@ export const handler = async (
             }
             const authToken = headers["X-Authorization"] || headers["x-authorization"];
             if (authToken) {
-                return await handleReset(authToken, dynamoDb);
+                return await handleReset(authToken, dynamoDb, s3Client, BUCKET_NAME);
             }
         } catch (error) {
             console.error("Error processing request:", error);

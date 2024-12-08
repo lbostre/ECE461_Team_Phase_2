@@ -5,7 +5,7 @@ import axios from "axios";
 import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import semver from "semver";
 import { getUserInfo } from "./authUtil.js";
 const TABLE_NAME = 'ECE461_Database';
@@ -803,4 +803,41 @@ export function splitIntoChunks<T>(arr: T[], size: number): T[][] {
         chunks.push(arr.slice(i, i + size));
     }
     return chunks;
+}
+
+// Helper function to clear an S3 bucket folder
+export async function clearS3Folder(
+    s3Client: S3Client,
+    bucketName: string,
+    folderPrefix: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // List objects in the folder
+        const listResponse = await s3Client.send(
+            new ListObjectsV2Command({
+                Bucket: bucketName,
+                Prefix: folderPrefix,
+            })
+        );
+
+        if (!listResponse.Contents || listResponse.Contents.length === 0) {
+            console.log(`No objects found in S3 folder: ${folderPrefix}`);
+            return { success: true };
+        }
+
+        // Create delete parameters
+        const objectsToDelete = listResponse.Contents.map((item) => ({ Key: item.Key }));
+        await s3Client.send(
+            new DeleteObjectsCommand({
+                Bucket: bucketName,
+                Delete: { Objects: objectsToDelete },
+            })
+        );
+
+        console.log(`Deleted ${objectsToDelete.length} objects from S3 folder: ${folderPrefix}`);
+        return { success: true };
+    } catch (error) {
+        console.error(`Error clearing S3 folder ${folderPrefix}:`, error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
 }
