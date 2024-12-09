@@ -145,7 +145,7 @@ describe('handlePackageUpdate', () => {
     const responseBody = JSON.parse(result.body);
     expect(responseBody).toHaveProperty('message', 'Version is updated.');
     expect(uploadToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should create a package successfully using content string and debloat', async () => {
@@ -198,7 +198,7 @@ describe('handlePackageUpdate', () => {
     expect(result.statusCode).toBe(200);
     const responseBody = JSON.parse(result.body);
     expect(responseBody).toHaveProperty('message', 'Version is updated.');
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should handle failed debloat properly', async () => {
@@ -372,7 +372,7 @@ describe('handlePackageUpdate', () => {
     const responseBody = JSON.parse(result.body);
     expect(responseBody).toHaveProperty('message', 'Version is updated.');
     expect(uploadToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should handle internal server errors for uploading to S3', async () => {
