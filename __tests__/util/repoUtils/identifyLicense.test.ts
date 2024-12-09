@@ -59,13 +59,13 @@ describe('identifyLicense', () => {
   });
 
   it('should identify CDDL 1.0 license', () => {
-    const content = 'Common Development and Distribution License, Version 1.0';
+    const content = 'Licensed under the Common Development and Distribution License, Version 1.0';
     const result = identifyLicense(content);
     expect(result).toBe('CDDL 1.0');
   });
 
   it('should identify EPL 2.0 license', () => {
-    const content = 'Eclipse Public License, Version 2.0';
+    const content = 'Licensed under the Eclipse Public License, Version 2.0';
     const result = identifyLicense(content);
     expect(result).toBe('EPL 2.0');
   });

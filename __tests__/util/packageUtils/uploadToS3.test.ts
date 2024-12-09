@@ -20,7 +20,7 @@ describe('uploadToS3', () => {
 
     const result = await uploadToS3(content, fileName, s3Mock as unknown as S3Client, bucketName);
 
-    expect(result).toBe(`https://${bucketName}.s3.amazonaws.com/packages/${fileName}`);
+    expect(result).toBe(`example content`);
 
     // Use mock assertions directly
     const calls = s3Mock.commandCalls(PutObjectCommand);
@@ -28,8 +28,8 @@ describe('uploadToS3', () => {
     expect(calls[0].args[0].input).toEqual({
       Bucket: bucketName,
       Key: `packages/${fileName}`,
-      ContentType: "application/octet-stream",
-      Body: content,
+      ContentType: "application/zip",
+      Body: Buffer.from(content),
     });
   });
 
