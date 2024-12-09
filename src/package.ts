@@ -518,7 +518,7 @@ export async function handlePackageCost(
                 body: JSON.stringify({
                     [id]: includeDependencies
                         ? { standaloneCost, totalCost }
-                        : { standaloneCost },
+                        : { totalCost: standaloneCost }, 
                 }),
             };
         }
@@ -580,10 +580,9 @@ export async function handlePackageCost(
         }
 
         // Construct the response
-        const response = {
-            [id]: { standaloneCost, totalCost },
-            ...dependencies,
-        };
+        const response = includeDependencies
+            ? { [id]: { standaloneCost, totalCost }, ...dependencies }
+            : { [id]: { totalCost: standaloneCost } };
 
         return {
             statusCode: 200,

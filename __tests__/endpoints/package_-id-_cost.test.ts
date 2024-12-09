@@ -65,7 +65,7 @@ describe('/package/{id}/cost endpoint', () => {
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
         expect(responseBody).toHaveProperty('357898765');
-        expect(responseBody['357898765']).toHaveProperty('standaloneCost', 50.0);
+        expect(responseBody['357898765']).toHaveProperty('totalCost', 50.0);
     });
 
     it('should return 400 if the package ID is missing', async () => {
