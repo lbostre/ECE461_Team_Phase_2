@@ -47,7 +47,7 @@ export default function DeleteUserButton(props: DeleteButtonProps) {
             <DialogTrigger asChild>
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                    className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center w-fit"
                 >
                     Delete Account
                 </button>
@@ -65,7 +65,7 @@ export default function DeleteUserButton(props: DeleteButtonProps) {
                 <div className="flex flex-col items-end">
                     <button
                         onClick={() => deleteUser()}
-                        className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                        className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center w-fit"
                     >
                         Delete
                     </button>

@@ -47,7 +47,7 @@ export default function DeletePackageButton(props: DeletePackageButtonProps) {
             <DialogTrigger asChild>
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                    className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center w-fit"
                 >
                     Delete Package
                 </button>
@@ -65,7 +65,7 @@ export default function DeletePackageButton(props: DeletePackageButtonProps) {
                 <div className="flex flex-col items-end">
                     <button
                         onClick={() => deletePackage()}
-                        className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                        className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center w-fit"
                     >
                         Delete
                     </button>

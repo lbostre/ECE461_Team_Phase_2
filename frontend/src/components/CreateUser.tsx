@@ -176,6 +176,7 @@ export default function CreateUser() {
                                 </div>
                                 <FormControl>
                                     <Switch
+                                        aria-label="Admin switch"
                                         checked={field.value}
                                         onCheckedChange={field.onChange}
                                     />
@@ -197,6 +198,7 @@ export default function CreateUser() {
                                     >
                                         <Checkbox
                                             id={id} // Ensure the Checkbox has this ID
+                                            aria-label={id}
                                             checked={
                                                 form
                                                     .watch("permissions")

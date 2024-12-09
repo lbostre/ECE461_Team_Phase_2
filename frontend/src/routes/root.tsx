@@ -156,7 +156,10 @@ export default function Root() {
                                         value={selectedOption}
                                         onValueChange={handleChange}
                                     >
-                                        <SelectTrigger className="w-[180px]">
+                                        <SelectTrigger
+                                            className="w-[180px]"
+                                            aria-label="Version type"
+                                        >
                                             <SelectValue placeholder="Select an option" />
                                         </SelectTrigger>
                                         <SelectContent>

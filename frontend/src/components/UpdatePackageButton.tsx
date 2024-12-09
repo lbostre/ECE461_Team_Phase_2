@@ -128,7 +128,7 @@ export default function UpdatePackageButton({
             <DialogTrigger asChild>
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="px-4 py-2 rounded-md bg-yellow-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                    className="px-4 py-2 rounded-md bg-amber-700 text-white font-medium text-sm flex gap-2 items-center w-fit"
                 >
                     Update Package
                 </button>
@@ -283,7 +283,7 @@ export default function UpdatePackageButton({
                         {/* Submit Button */}
                         <Button
                             type="submit"
-                            className="bg-yellow-500 text-white font-medium text-sm"
+                            className="bg-amber-700 text-white font-medium text-sm"
                         >
                             Update
                         </Button>

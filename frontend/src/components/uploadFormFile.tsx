@@ -251,6 +251,7 @@ export function UploadFormFile() {
                                     <Checkbox
                                         checked={field.value}
                                         onCheckedChange={field.onChange}
+                                        aria-label="Debloat"
                                     />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
@@ -264,7 +265,7 @@ export function UploadFormFile() {
                         )}
                     />
 
-                    <FormField
+                    {/* <FormField
                         control={form.control}
                         name="secret"
                         render={({ field }) => (
@@ -273,6 +274,7 @@ export function UploadFormFile() {
                                     <Checkbox
                                         checked={field.value}
                                         onCheckedChange={field.onChange}
+                                        aria-label="Secret"
                                     />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
@@ -283,7 +285,7 @@ export function UploadFormFile() {
                                 </div>
                             </FormItem>
                         )}
-                    />
+                    /> */}
 
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? (

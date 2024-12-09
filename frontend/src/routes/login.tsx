@@ -153,6 +153,8 @@ export default function Login() {
                                         <Switch
                                             checked={field.value}
                                             onCheckedChange={field.onChange}
+                                            aria-label="Admin switch"
+                                            aria-labelledby="isAdmin"
                                         />
                                     </FormControl>
                                 </FormItem>

@@ -39,7 +39,7 @@ export default function ResetRegistryButton() {
             <DialogTrigger asChild>
                 <Button
                     onClick={() => setIsOpen(true)}
-                    className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center "
+                    className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center "
                 >
                     Reset
                 </Button>
@@ -55,7 +55,7 @@ export default function ResetRegistryButton() {
                 <div className="flex flex-col items-end">
                     <Button
                         onClick={() => hanldleResetRegistry()}
-                        className="px-4 py-2 rounded-md bg-red-500 text-white font-medium text-sm flex gap-2 items-center w-fit"
+                        className="px-4 py-2 rounded-md bg-red-600 text-white font-medium text-sm flex gap-2 items-center w-fit"
                     >
                         Reset
                     </Button>
