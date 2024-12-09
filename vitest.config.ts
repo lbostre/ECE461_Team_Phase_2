@@ -9,6 +9,8 @@ export default defineConfig({
             'repos/**/*', // Use more explicit exclusion for repos directory
             'logs',
             'coverage',
+            // Empty test files
+            '__tests__/util/packageUtils/extractPackageJsonUrl.test.ts',
         ],
         coverage: {
             enabled: true,
