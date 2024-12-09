@@ -25,21 +25,3 @@ jobs:
 
     - name: Test
       run: npm run test
-
-# Disable linting until fixed
-    # lint-typescript:
-    #     runs-on: ubuntu-latest
-
-    #     steps:
-    #         - uses: actions/checkout@v4
-    #           with:
-    #               ref: ${{ github.head_ref }}
-
-    #         - name: Give execute permissions to ./run
-    #           run: chmod +x ./run
-
-    #         - name: Install Dependencies
-    #           run: ./run install
-
-    #         - name: Lint TypeScript
-    #           run: npx eslint '**/*.ts'
