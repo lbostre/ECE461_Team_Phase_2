@@ -133,7 +133,7 @@ describe('/package POST endpoint', () => {
     expect(responseBody).toHaveProperty('metadata');
     expect(responseBody.metadata).toHaveProperty('ID');
     expect(uploadGithubRepoAsZipToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should return 400 if the request body is missing', async () => {
