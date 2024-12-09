@@ -146,13 +146,11 @@ export default function Package() {
                         <h5>Version {packageData?.metadata.Version}</h5>
                         <h5>id: {packageData?.metadata.ID}</h5>
                     </div>
-                    <Button
-                        className="w-fit"
-                        onClick={handleDownload}
-                        disabled={!hasDownloadPerms}
-                    >
-                        Download
-                    </Button>
+                    {hasDownloadPerms && (
+                        <Button className="w-fit" onClick={handleDownload}>
+                            Download
+                        </Button>
+                    )}
                 </div>
                 {isLoading && (
                     <div className="flex flex-col items-center justify-center gap-3 w-full">
