@@ -174,7 +174,7 @@ export async function uploadGithubRepoAsZipToS3(
         await s3Client.send(command);
         console.log(`File uploaded successfully.`);
 
-        return `https://${bucketName}.s3.amazonaws.com/packages/${fileName.toLowerCase()}`; // Return the uploaded file URL
+        return response.data.toString(); // Return the uploaded file URL
     } catch (error) {
         console.error(
             "Error during uploadGithubRepoAsZipToS3 execution:",
