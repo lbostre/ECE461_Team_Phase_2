@@ -62,4 +62,4 @@ Each metric is calculated using specific criteria and contributes to the overall
 This project is licensed under the GNU LGPLv2.1 License.
 
 ## Acknowledgements 
-Special thanks to the ECE461 course instructors and teaching assistants for their guidance and support.
+Special thanks to the ECE461 course instructor and teaching assistants for their guidance and support.
