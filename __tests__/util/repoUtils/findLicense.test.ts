@@ -51,7 +51,7 @@ describe('findLicense', () => {
     vi.mocked(fs.promises.readdir).mockResolvedValue([
       { isFile: () => true, name: 'index.js' } as fs.Dirent,
     ]);
-    vi.mocked(fs.promises.readFile).mockResolvedValue(new Error('Failed to read file'));
+    vi.mocked(fs.promises.readFile).mockRejectedValue(new Error('Failed to read file'));
 
 
     await expect(findLicense(repoPath)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
@@ -61,7 +61,7 @@ describe('findLicense', () => {
   it('should handle errors during readdir', async () => {
     // Mock fs.promises.readdir to throw an error
     vi.mocked(fs.promises.readdir).mockRejectedValue(new Error('Failed to read directory'));
-    vi.mocked(fs.promises.readFile).mockResolvedValue(new Error('Failed to read file'));
+    vi.mocked(fs.promises.readFile).mockRejectedValue(new Error('Failed to read file'));
 
     await expect(findLicense(repoPath)).rejects.toThrow('License information not found in LICENSE files, package.json, or README.');
     expect(fs.promises.readdir).toHaveBeenCalledWith(repoPath, { withFileTypes: true });
