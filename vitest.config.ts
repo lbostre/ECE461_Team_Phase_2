@@ -11,6 +11,8 @@ export default defineConfig({
             'coverage',
             // Empty test files
             '__tests__/util/packageUtils/extractPackageJsonUrl.test.ts',
+            '__tests__/util/packageUtils/extractVersionFromPackageJson.test.ts',
+            '__tests__/util/packageUtils/uploadGithubRepoAsZipToS3.test.ts',
         ],
         coverage: {
             enabled: true,

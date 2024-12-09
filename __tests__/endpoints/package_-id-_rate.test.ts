@@ -31,10 +31,6 @@ describe('/package/{id}/rate endpoint', () => {
         ddbMock.on(GetCommand, {
             TableName: 'ECE461_Database',
             Key: { ECEfoursixone: 'valid-package-id' },
-            ProjectionExpression: '#metrics',
-            ExpressionAttributeNames: {
-                '#metrics': 'Metrics',
-            },
             }).resolves({
             Item: {
                 Metrics: {
@@ -68,13 +64,12 @@ describe('/package/{id}/rate endpoint', () => {
 
         expect(result.statusCode).toBe(200);
         const responseBody = JSON.parse(result.body);
-        expect(responseBody).toHaveProperty('PackageRating');
-        expect(responseBody.PackageRating).toHaveProperty('NetScore', 0.8);
-        expect(responseBody.PackageRating).toHaveProperty('RampUp', 0.7);
-        expect(responseBody.PackageRating).toHaveProperty('Correctness', 0.9);
-        expect(responseBody.PackageRating).toHaveProperty('BusFactor', 0.6);
-        expect(responseBody.PackageRating).toHaveProperty('ResponsiveMaintainer', 0.8);
-        expect(responseBody.PackageRating).toHaveProperty('LicenseScore', 1.0);
+        expect(responseBody).toHaveProperty('NetScore', 0.8);
+        expect(responseBody).toHaveProperty('RampUp', 0.7);
+        expect(responseBody).toHaveProperty('Correctness', 0.9);
+        expect(responseBody).toHaveProperty('BusFactor', 0.6);
+        expect(responseBody).toHaveProperty('ResponsiveMaintainer', 0.8);
+        expect(responseBody).toHaveProperty('LicenseScore', 1.0);
     });
 
     it('should return 400 if the package ID is missing', async () => {
@@ -130,10 +125,6 @@ describe('/package/{id}/rate endpoint', () => {
         ddbMock.on(GetCommand, {
             TableName: 'ECE461_Database',
             Key: { ECEfoursixone: 'invalid-package-id' },
-            ProjectionExpression: '#metrics',
-            ExpressionAttributeNames: {
-                '#metrics': 'Metrics',
-            },
             }).resolves({ Item: undefined });
 
         const event: APIGatewayProxyEvent = {

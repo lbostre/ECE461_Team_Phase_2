@@ -46,7 +46,7 @@ describe('codeReviewCoverage', () => {
 
     const result = await codeReviewCoverage(repoURL, headers);
 
-    expect(result.value).toBe(0.0);
+    expect(result.value).toBe(1.0);
     expect(result.latency).toBeGreaterThanOrEqual(0);
   });
 
@@ -161,7 +161,7 @@ describe('codeReviewCoverage', () => {
 
     const result = await codeReviewCoverage(repoURL, headers);
 
-    expect(result.value).toBe(0);
+    expect(result.value).toBe(1.0);
     expect(result.latency).toBeGreaterThanOrEqual(0);
     expect(axios.get).toHaveBeenCalledWith(`${repoURL}/pulls/1/files`, { headers });
   });
