@@ -180,7 +180,7 @@ describe('handlePackagePost', () => {
     expect(responseBody).toHaveProperty('metadata');
     expect(responseBody.metadata).toHaveProperty('ID');
     expect(uploadToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should create a package successfully using URL', async () => {
@@ -225,7 +225,7 @@ describe('handlePackagePost', () => {
     expect(responseBody).toHaveProperty('metadata');
     expect(responseBody.metadata).toHaveProperty('ID');
     expect(uploadGithubRepoAsZipToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should create a package successfully using NPM URL', async () => {
@@ -275,7 +275,7 @@ describe('handlePackagePost', () => {
     expect(responseBody).toHaveProperty('metadata');
     expect(responseBody.metadata).toHaveProperty('ID');
     expect(uploadGithubRepoAsZipToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should return 400 error when body is missing', async () => {
@@ -352,7 +352,7 @@ describe('handlePackagePost', () => {
     expect(responseBody).toHaveProperty('metadata');
     expect(responseBody.metadata).toHaveProperty('ID');
     expect(uploadToS3).toHaveBeenCalled();
-    expect(ddbMock.commandCalls(PutCommand).length).toBe(1);
+    expect(ddbMock.commandCalls(PutCommand).length).toBe(2);
   });
 
   it('should handle failed debloat properly', async () => {
